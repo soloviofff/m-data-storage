@@ -1,0 +1,186 @@
+docs/
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+go.work
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Configuration files with secrets
+.env
+.env.local
+.env.*.local
+config/secrets.yaml
+config/production.yaml
+config/local.yaml
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+data/
+storage/
+
+# QuestDB data
+questdb_data/
+*.qdb
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Build artifacts
+build/
+dist/
+bin/
+target/
+
+# Test coverage
+coverage.html
+coverage.out
+coverage.xml
+*.cover
+
+# Documentation build
+docs/_build/
+docs/site/
+
+# Node.js (for admin frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Admin frontend build
+admin/dist/
+admin/build/
+admin/.next/
+admin/out/
+
+# Static files
+static/uploads/
+static/temp/
+
+# Certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Archives
+*.tar
+*.tar.gz
+*.zip
+*.rar
+
+# Local development
+.local/
+dev/
+debug/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Kubernetes
+k8s/secrets/
+k8s/local/
+
+# Monitoring
+prometheus_data/
+grafana_data/
+
+# Cache
+.cache/
+cache/
+
+# Profiling
+*.prof
+*.pprof
+
+# Air (live reload for Go)
+.air.toml
+tmp/
+
+# Delve debugger
+__debug_bin
+
+# Go module proxy
+GOPROXY
+GOSUMDB
+
+# Local scripts
+scripts/local/
+scripts/dev/
+
+# Migration files with sensitive data
+migrations/data/
+migrations/seeds/
+
+# Admin panel uploads and temp files
+admin/uploads/
+admin/temp/
+admin/node_modules/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Ansible
+*.retry
+
+# Local environment overrides
+docker-compose.local.yml
+config.local.json
+settings.local.yaml 
