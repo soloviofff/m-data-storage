@@ -5,67 +5,94 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"m-data-storage/api/dto"
+	internalerrors "m-data-storage/internal/errors"
 	"m-data-storage/pkg/broker"
 )
 
-// Repository handles configuration storage operations
-type Repository struct {
+// Repository - интерфейс для работы с хранилищем конфигурации
+type Repository interface {
+	GetSystemConfig(ctx context.Context) (dto.SystemConfig, error)
+	UpdateSystemConfig(ctx context.Context, config dto.SystemConfig) error
+	GetBrokerConfig(ctx context.Context, id string) (broker.BrokerConfig, error)
+	SetBrokerConfig(ctx context.Context, config broker.BrokerConfig) error
+	ListBrokerConfigs(ctx context.Context) ([]broker.BrokerConfig, error)
+}
+
+// repository - реализация интерфейса Repository
+type repository struct {
 	db *sql.DB
 }
 
-// NewRepository creates a new configuration repository
-func NewRepository(db *sql.DB) *Repository {
-	return &Repository{db: db}
+// NewRepository - создает новый экземпляр репозитория
+func NewRepository(db *sql.DB) Repository {
+	return &repository{db: db}
 }
 
-// GetSystemConfig retrieves system configuration
-func (r *Repository) GetSystemConfig(ctx context.Context) (*dto.SystemConfig, error) {
+// GetSystemConfig - получает системную конфигурацию
+func (r *repository) GetSystemConfig(ctx context.Context) (dto.SystemConfig, error) {
 	query := `SELECT 
 		storage_retention, vacuum_interval, max_storage_size,
 		api_port, api_host, read_timeout, write_timeout, shutdown_timeout,
-		jwt_secret, api_key_header, allowed_origins,
-		metrics_enabled, metrics_port, tracing_enabled
-		FROM system_config WHERE id = 1`
+		jwt_secret, api_key_header, allowed_origins, metrics_enabled,
+		metrics_port, tracing_enabled
+	FROM system_config LIMIT 1`
 
-	var allowedOriginsJSON string
-	var cfg dto.SystemConfig
+	var (
+		storageRetention int64
+		vacuumInterval   int64
+		maxStorageSize   int64
+		readTimeout      int64
+		writeTimeout     int64
+		shutdownTimeout  int64
+		allowedOrigins   string
+		config           dto.SystemConfig
+	)
 
 	err := r.db.QueryRowContext(ctx, query).Scan(
-		&cfg.StorageRetention,
-		&cfg.VacuumInterval,
-		&cfg.MaxStorageSize,
-		&cfg.APIPort,
-		&cfg.APIHost,
-		&cfg.ReadTimeout,
-		&cfg.WriteTimeout,
-		&cfg.ShutdownTimeout,
-		&cfg.JWTSecret,
-		&cfg.APIKeyHeader,
-		&allowedOriginsJSON,
-		&cfg.MetricsEnabled,
-		&cfg.MetricsPort,
-		&cfg.TracingEnabled,
+		&storageRetention,
+		&vacuumInterval,
+		&maxStorageSize,
+		&config.APIPort,
+		&config.APIHost,
+		&readTimeout,
+		&writeTimeout,
+		&shutdownTimeout,
+		&config.JWTSecret,
+		&config.APIKeyHeader,
+		&allowedOrigins,
+		&config.MetricsEnabled,
+		&config.MetricsPort,
+		&config.TracingEnabled,
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("system configuration not found")
+		return dto.SystemConfig{}, internalerrors.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get system config: %w", err)
+		return dto.SystemConfig{}, fmt.Errorf("failed to get system config: %w", err)
 	}
 
-	// Parse allowed origins JSON
-	if err := json.Unmarshal([]byte(allowedOriginsJSON), &cfg.AllowedOrigins); err != nil {
-		return nil, fmt.Errorf("failed to parse allowed origins: %w", err)
+	// Convert seconds to durations
+	config.StorageRetention = time.Duration(storageRetention) * time.Second
+	config.VacuumInterval = time.Duration(vacuumInterval) * time.Second
+	config.MaxStorageSize = maxStorageSize
+	config.ReadTimeout = time.Duration(readTimeout) * time.Second
+	config.WriteTimeout = time.Duration(writeTimeout) * time.Second
+	config.ShutdownTimeout = time.Duration(shutdownTimeout) * time.Second
+
+	// Parse allowed origins
+	if err := json.Unmarshal([]byte(allowedOrigins), &config.AllowedOrigins); err != nil {
+		return dto.SystemConfig{}, fmt.Errorf("failed to parse allowed origins: %w", err)
 	}
 
-	return &cfg, nil
+	return config, nil
 }
 
-// UpdateSystemConfig updates system configuration
-func (r *Repository) UpdateSystemConfig(ctx context.Context, cfg dto.SystemConfig) error {
+// UpdateSystemConfig - обновляет системную конфигурацию
+func (r *repository) UpdateSystemConfig(ctx context.Context, cfg dto.SystemConfig) error {
 	// Convert durations to seconds for storage
 	storageRetention := int64(cfg.StorageRetention.Seconds())
 	vacuumInterval := int64(cfg.VacuumInterval.Seconds())
@@ -74,32 +101,17 @@ func (r *Repository) UpdateSystemConfig(ctx context.Context, cfg dto.SystemConfi
 	shutdownTimeout := int64(cfg.ShutdownTimeout.Seconds())
 
 	// Convert allowed origins to JSON
-	allowedOriginsJSON, err := json.Marshal(cfg.AllowedOrigins)
+	allowedOrigins, err := json.Marshal(cfg.AllowedOrigins)
 	if err != nil {
 		return fmt.Errorf("failed to marshal allowed origins: %w", err)
 	}
 
-	query := `INSERT INTO system_config (
-		id, storage_retention, vacuum_interval, max_storage_size,
+	query := `INSERT OR REPLACE INTO system_config (
+		storage_retention, vacuum_interval, max_storage_size,
 		api_port, api_host, read_timeout, write_timeout, shutdown_timeout,
-		jwt_secret, api_key_header, allowed_origins,
-		metrics_enabled, metrics_port, tracing_enabled
-	) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	ON CONFLICT(id) DO UPDATE SET
-		storage_retention = excluded.storage_retention,
-		vacuum_interval = excluded.vacuum_interval,
-		max_storage_size = excluded.max_storage_size,
-		api_port = excluded.api_port,
-		api_host = excluded.api_host,
-		read_timeout = excluded.read_timeout,
-		write_timeout = excluded.write_timeout,
-		shutdown_timeout = excluded.shutdown_timeout,
-		jwt_secret = excluded.jwt_secret,
-		api_key_header = excluded.api_key_header,
-		allowed_origins = excluded.allowed_origins,
-		metrics_enabled = excluded.metrics_enabled,
-		metrics_port = excluded.metrics_port,
-		tracing_enabled = excluded.tracing_enabled`
+		jwt_secret, api_key_header, allowed_origins, metrics_enabled,
+		metrics_port, tracing_enabled
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	_, err = r.db.ExecContext(ctx, query,
 		storageRetention,
@@ -112,7 +124,7 @@ func (r *Repository) UpdateSystemConfig(ctx context.Context, cfg dto.SystemConfi
 		shutdownTimeout,
 		cfg.JWTSecret,
 		cfg.APIKeyHeader,
-		allowedOriginsJSON,
+		string(allowedOrigins),
 		cfg.MetricsEnabled,
 		cfg.MetricsPort,
 		cfg.TracingEnabled,
@@ -125,50 +137,36 @@ func (r *Repository) UpdateSystemConfig(ctx context.Context, cfg dto.SystemConfi
 	return nil
 }
 
-// GetBrokerConfig retrieves broker configuration
-func (r *Repository) GetBrokerConfig(ctx context.Context, brokerID string) (*broker.BrokerConfig, error) {
+// GetBrokerConfig - получает конфигурацию брокера
+func (r *repository) GetBrokerConfig(ctx context.Context, brokerID string) (broker.BrokerConfig, error) {
 	query := `SELECT config_json FROM broker_config WHERE id = ?`
 
 	var configJSON string
 	err := r.db.QueryRowContext(ctx, query, brokerID).Scan(&configJSON)
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("broker configuration not found: %s", brokerID)
+		return broker.BrokerConfig{}, internalerrors.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get broker config: %w", err)
+		return broker.BrokerConfig{}, fmt.Errorf("failed to get broker config: %w", err)
 	}
 
-	var cfg broker.BrokerConfig
-	if err := json.Unmarshal([]byte(configJSON), &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse broker config: %w", err)
+	var config broker.BrokerConfig
+	if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
+		return broker.BrokerConfig{}, fmt.Errorf("failed to parse broker config: %w", err)
 	}
 
-	return &cfg, nil
+	return config, nil
 }
 
-// SetBrokerConfig saves broker configuration
-func (r *Repository) SetBrokerConfig(ctx context.Context, cfg broker.BrokerConfig) error {
+// SetBrokerConfig - сохраняет конфигурацию брокера
+func (r *repository) SetBrokerConfig(ctx context.Context, cfg broker.BrokerConfig) error {
 	configJSON, err := json.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal broker config: %w", err)
 	}
 
-	query := `INSERT INTO broker_config (id, name, type, enabled, config_json)
-		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
-			name = excluded.name,
-			type = excluded.type,
-			enabled = excluded.enabled,
-			config_json = excluded.config_json`
-
-	_, err = r.db.ExecContext(ctx, query,
-		cfg.ID,
-		cfg.Name,
-		cfg.Type,
-		cfg.Enabled,
-		configJSON,
-	)
-
+	query := `INSERT OR REPLACE INTO broker_config (id, name, type, enabled, config_json) VALUES (?, ?, ?, ?, ?)`
+	_, err = r.db.ExecContext(ctx, query, cfg.ID, cfg.Name, string(cfg.Type), cfg.Enabled, string(configJSON))
 	if err != nil {
 		return fmt.Errorf("failed to set broker config: %w", err)
 	}
@@ -176,8 +174,8 @@ func (r *Repository) SetBrokerConfig(ctx context.Context, cfg broker.BrokerConfi
 	return nil
 }
 
-// ListBrokerConfigs retrieves all broker configurations
-func (r *Repository) ListBrokerConfigs(ctx context.Context) ([]broker.BrokerConfig, error) {
+// ListBrokerConfigs - получает список всех конфигураций брокеров
+func (r *repository) ListBrokerConfigs(ctx context.Context) ([]broker.BrokerConfig, error) {
 	query := `SELECT config_json FROM broker_config`
 
 	rows, err := r.db.QueryContext(ctx, query)
@@ -193,12 +191,12 @@ func (r *Repository) ListBrokerConfigs(ctx context.Context) ([]broker.BrokerConf
 			return nil, fmt.Errorf("failed to scan broker config: %w", err)
 		}
 
-		var cfg broker.BrokerConfig
-		if err := json.Unmarshal([]byte(configJSON), &cfg); err != nil {
+		var config broker.BrokerConfig
+		if err := json.Unmarshal([]byte(configJSON), &config); err != nil {
 			return nil, fmt.Errorf("failed to parse broker config: %w", err)
 		}
 
-		configs = append(configs, cfg)
+		configs = append(configs, config)
 	}
 
 	if err := rows.Err(); err != nil {

@@ -3,44 +3,36 @@ package config
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 
 	"m-data-storage/api/dto"
+	internalerrors "m-data-storage/internal/errors"
 	"m-data-storage/pkg/broker"
 )
 
-// Service implements configuration management
+// ErrNotFound - ошибка, когда конфигурация не найдена
+var ErrNotFound = errors.New("configuration not found")
+
+// Service - сервис для работы с конфигурацией
 type Service struct {
-	repo *Repository
+	repo Repository
 	db   *sql.DB
 }
 
-// NewService creates a new configuration service
-func NewService(dbPath string) (*Service, error) {
-	// Ensure directory exists
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
-		return nil, fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	// Open database connection
-	db, err := sql.Open("sqlite3", dbPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open config database: %w", err)
-	}
-
-	// Initialize schema
-	if err := initSchema(db); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to initialize schema: %w", err)
+// NewService - создает новый экземпляр сервиса
+func NewService(repo Repository) (*Service, error) {
+	if repo == nil {
+		return nil, errors.New("repository is required")
 	}
 
 	return &Service{
-		repo: NewRepository(db),
-		db:   db,
+		repo: repo,
 	}, nil
 }
 
@@ -50,12 +42,17 @@ func (s *Service) Close() error {
 }
 
 // GetBrokerConfig implements service.ConfigService
-func (s *Service) GetBrokerConfig(ctx context.Context, brokerID string) (*broker.BrokerConfig, error) {
+func (s *Service) GetBrokerConfig(ctx context.Context, brokerID string) (broker.BrokerConfig, error) {
 	return s.repo.GetBrokerConfig(ctx, brokerID)
 }
 
 // SetBrokerConfig implements service.ConfigService
 func (s *Service) SetBrokerConfig(ctx context.Context, config broker.BrokerConfig) error {
+	// Validate configuration
+	if err := validateBrokerConfig(config); err != nil {
+		return fmt.Errorf("invalid broker config: %w", err)
+	}
+
 	return s.repo.SetBrokerConfig(ctx, config)
 }
 
@@ -65,13 +62,41 @@ func (s *Service) ListBrokerConfigs(ctx context.Context) ([]broker.BrokerConfig,
 }
 
 // GetSystemConfig implements service.ConfigService
-func (s *Service) GetSystemConfig(ctx context.Context) (*dto.SystemConfig, error) {
-	return s.repo.GetSystemConfig(ctx)
+func (s *Service) GetSystemConfig(ctx context.Context) (dto.SystemConfig, error) {
+	cfg, err := s.repo.GetSystemConfig(ctx)
+	if err != nil {
+		if errors.Is(err, internalerrors.ErrNotFound) {
+			// Return default configuration
+			return dto.SystemConfig{
+				StorageRetention: 24 * time.Hour,
+				VacuumInterval:   1 * time.Hour,
+				MaxStorageSize:   1024 * 1024 * 1024, // 1GB
+				APIPort:          8080,
+				APIHost:          "localhost",
+				ReadTimeout:      30 * time.Second,
+				WriteTimeout:     30 * time.Second,
+				ShutdownTimeout:  10 * time.Second,
+				JWTSecret:        "default-secret-key-must-be-changed-in-prod",
+				APIKeyHeader:     "X-API-Key",
+				AllowedOrigins:   []string{"http://localhost:3000"},
+				MetricsEnabled:   true,
+				MetricsPort:      9090,
+				TracingEnabled:   false,
+			}, nil
+		}
+		return dto.SystemConfig{}, fmt.Errorf("failed to get system config: %w", err)
+	}
+	return cfg, nil
 }
 
 // UpdateSystemConfig implements service.ConfigService
-func (s *Service) UpdateSystemConfig(ctx context.Context, config dto.SystemConfig) error {
-	return s.repo.UpdateSystemConfig(ctx, config)
+func (s *Service) UpdateSystemConfig(ctx context.Context, cfg dto.SystemConfig) error {
+	// Validate configuration
+	if err := validateSystemConfig(cfg); err != nil {
+		return fmt.Errorf("invalid system config: %w", err)
+	}
+
+	return s.repo.UpdateSystemConfig(ctx, cfg)
 }
 
 // initSchema initializes database schema
@@ -86,6 +111,87 @@ func initSchema(db *sql.DB) error {
 	// Execute schema
 	if _, err := db.Exec(string(schema)); err != nil {
 		return fmt.Errorf("failed to execute schema: %w", err)
+	}
+
+	return nil
+}
+
+// validateSystemConfig - проверяет корректность системной конфигурации
+func validateSystemConfig(cfg dto.SystemConfig) error {
+	if cfg.StorageRetention <= 0 {
+		return errors.New("storage retention must be positive")
+	}
+	if cfg.VacuumInterval <= 0 {
+		return errors.New("vacuum interval must be positive")
+	}
+	if cfg.MaxStorageSize <= 0 {
+		return errors.New("max storage size must be positive")
+	}
+	if cfg.APIPort <= 0 || cfg.APIPort > 65535 {
+		return errors.New("invalid API port")
+	}
+	if cfg.APIHost == "" {
+		return errors.New("API host is required")
+	}
+	if cfg.ReadTimeout <= 0 {
+		return errors.New("read timeout must be positive")
+	}
+	if cfg.WriteTimeout <= 0 {
+		return errors.New("write timeout must be positive")
+	}
+	if cfg.ShutdownTimeout <= 0 {
+		return errors.New("shutdown timeout must be positive")
+	}
+	if len(cfg.JWTSecret) < 32 {
+		return errors.New("JWT secret must be at least 32 characters")
+	}
+	if cfg.APIKeyHeader == "" {
+		return errors.New("API key header is required")
+	}
+	if len(cfg.AllowedOrigins) == 0 {
+		return errors.New("at least one allowed origin is required")
+	}
+	if cfg.MetricsEnabled && (cfg.MetricsPort <= 0 || cfg.MetricsPort > 65535) {
+		return errors.New("invalid metrics port")
+	}
+
+	return nil
+}
+
+// validateBrokerConfig - проверяет корректность конфигурации брокера
+func validateBrokerConfig(cfg broker.BrokerConfig) error {
+	if cfg.ID == "" {
+		return errors.New("broker ID is required")
+	}
+	if cfg.Name == "" {
+		return errors.New("broker name is required")
+	}
+	if cfg.Type != broker.BrokerTypeCrypto && cfg.Type != broker.BrokerTypeStock {
+		return errors.New("invalid broker type")
+	}
+	if cfg.Connection.WebSocketURL == "" {
+		return errors.New("WebSocket URL is required")
+	}
+	if cfg.Connection.RestAPIURL == "" {
+		return errors.New("REST API URL is required")
+	}
+	if cfg.Connection.Timeout <= 0 {
+		return errors.New("connection timeout must be positive")
+	}
+	if cfg.Connection.PingInterval <= 0 {
+		return errors.New("ping interval must be positive")
+	}
+	if cfg.Connection.ReconnectDelay <= 0 {
+		return errors.New("reconnect delay must be positive")
+	}
+	if cfg.Connection.MaxReconnectAttempts <= 0 {
+		return errors.New("max reconnect attempts must be positive")
+	}
+	if cfg.Auth.APIKey == "" {
+		return errors.New("API key is required")
+	}
+	if cfg.Auth.SecretKey == "" {
+		return errors.New("secret key is required")
 	}
 
 	return nil
