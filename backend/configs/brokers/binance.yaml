@@ -1,0 +1,107 @@
+# Конфигурация брокера Binance
+broker_id: "binance"
+name: "Binance"
+type: "crypto"
+enabled: true
+
+# Настройки подключения
+connection:
+  base_url: "https://api.binance.com"
+  websocket_url: "wss://stream.binance.com:9443/ws"
+  timeout: "30s"
+  rate_limit:
+    requests_per_minute: 1200
+    weight_per_minute: 6000
+
+# Аутентификация (опционально для публичных данных)
+auth:
+  api_key: ""
+  secret_key: ""
+  passphrase: ""
+
+# Поддерживаемые рынки
+markets:
+  - "spot"
+  - "futures"
+
+# Поддерживаемые типы данных
+data_types:
+  - "ticker"
+  - "candle"
+  - "orderbook"
+
+# Настройки подписок
+subscriptions:
+  # Максимальное количество символов в одном WebSocket соединении
+  max_symbols_per_connection: 200
+  
+  # Автоматическое переподключение
+  auto_reconnect: true
+  reconnect_delay: "5s"
+  max_reconnects: 10
+  
+  # Ping/pong для поддержания соединения
+  ping_interval: "30s"
+  pong_timeout: "10s"
+
+# Маппинг символов (если нужно)
+symbol_mapping:
+  # Внутренний символ: Символ брокера
+  "BTC/USDT": "BTCUSDT"
+  "ETH/USDT": "ETHUSDT"
+
+# Настройки для разных типов данных
+ticker_config:
+  # Интервал обновления тикеров (если поддерживается)
+  update_interval: "1s"
+
+candle_config:
+  # Поддерживаемые таймфреймы
+  supported_timeframes:
+    - "1s"
+    - "1m"
+    - "3m"
+    - "5m"
+    - "15m"
+    - "30m"
+    - "1h"
+    - "2h"
+    - "4h"
+    - "6h"
+    - "8h"
+    - "12h"
+    - "1d"
+    - "3d"
+    - "1w"
+    - "1M"
+
+orderbook_config:
+  # Глубина ордербука
+  depth: 20
+  # Интервал обновления
+  update_interval: "100ms"
+
+# Настройки для фьючерсов
+futures_config:
+  # Дополнительные данные для фьючерсов
+  funding_rate: true
+  mark_price: true
+  open_interest: true
+
+# Обработка ошибок
+error_handling:
+  # Максимальное количество ошибок подряд перед отключением
+  max_consecutive_errors: 5
+  # Задержка после ошибки
+  error_delay: "1s"
+  # Логировать все ошибки
+  log_all_errors: true
+
+# Мониторинг
+monitoring:
+  # Проверка здоровья соединения
+  health_check_interval: "30s"
+  # Таймаут для проверки здоровья
+  health_check_timeout: "10s"
+  # Метрики производительности
+  collect_metrics: true
