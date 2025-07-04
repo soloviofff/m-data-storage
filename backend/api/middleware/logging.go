@@ -1,18 +1,19 @@
 package middleware
 
 import (
-	"log"
 	"net/http"
 	"time"
+
+	"m-data-storage/internal/infrastructure/logger"
 )
 
 // LoggingMiddleware handles request logging
 type LoggingMiddleware struct {
-	logger *log.Logger
+	logger *logger.Logger
 }
 
 // NewLoggingMiddleware creates a new LoggingMiddleware instance
-func NewLoggingMiddleware(logger *log.Logger) *LoggingMiddleware {
+func NewLoggingMiddleware(logger *logger.Logger) *LoggingMiddleware {
 	return &LoggingMiddleware{
 		logger: logger,
 	}
@@ -29,15 +30,20 @@ func (m *LoggingMiddleware) Log(next http.Handler) http.Handler {
 		// Process request
 		next.ServeHTTP(wrapped, r)
 
-		// Log request details
-		m.logger.Printf(
-			"Method: %s, Path: %s, Status: %d, Duration: %v, IP: %s, UserAgent: %s",
+		// Get request ID from context
+		requestID := GetRequestIDFromContext(r.Context())
+
+		// Calculate duration
+		duration := time.Since(start)
+
+		// Log request details using our structured logger
+		m.logger.LogAPIRequest(
+			requestID,
 			r.Method,
 			r.URL.Path,
-			wrapped.status,
-			time.Since(start),
-			r.RemoteAddr,
 			r.UserAgent(),
+			duration.String(),
+			wrapped.status,
 		)
 	})
 }
