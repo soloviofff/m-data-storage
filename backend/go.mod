@@ -14,6 +14,7 @@ require (
 require (
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/lib/pq v1.10.9 // indirect
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	gopkg.in/lumberjack.v2 v2.0.0 // indirect
 )

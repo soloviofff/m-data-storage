@@ -59,7 +59,6 @@ config/local.yaml
 *.sqlite
 *.sqlite3
 data/
-storage/
 
 # QuestDB data
 questdb_data/
