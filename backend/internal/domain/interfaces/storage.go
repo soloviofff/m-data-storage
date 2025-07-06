@@ -2,6 +2,7 @@ package interfaces
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"m-data-storage/internal/domain/entities"
@@ -91,6 +92,9 @@ type MetadataStorage interface {
 	Disconnect() error
 	Health() error
 	Migrate() error
+
+	// Доступ к базе данных для миграций
+	GetDB() *sql.DB
 }
 
 // TimeSeriesStorage - интерфейс для хранения временных рядов (QuestDB)
@@ -113,6 +117,9 @@ type TimeSeriesStorage interface {
 	Connect(ctx context.Context) error
 	Disconnect() error
 	Health() error
+
+	// Доступ к базе данных для миграций
+	GetDB() *sql.DB
 
 	// Очистка старых данных
 	CleanupOldData(ctx context.Context, retentionPeriod time.Duration) error

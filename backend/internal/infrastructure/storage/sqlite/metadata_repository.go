@@ -40,13 +40,15 @@ func NewMetadataRepository(dbPath string) (*MetadataRepository, error) {
 
 	repo := &MetadataRepository{db: db}
 
-	// Initialize schema
-	if err := repo.initSchema(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("failed to initialize schema: %w", err)
-	}
+	// Note: Schema initialization is now handled by migrations
+	// No longer calling initSchema() here
 
 	return repo, nil
+}
+
+// GetDB returns the underlying database connection
+func (r *MetadataRepository) GetDB() *sql.DB {
+	return r.db
 }
 
 // initSchema initializes the database schema

@@ -37,6 +37,11 @@ func NewTimeSeriesRepository(config Config) *TimeSeriesRepository {
 	}
 }
 
+// GetDB returns the underlying database connection
+func (r *TimeSeriesRepository) GetDB() *sql.DB {
+	return r.db
+}
+
 // Connect establishes connection to QuestDB
 func (r *TimeSeriesRepository) Connect(ctx context.Context) error {
 	dsn := fmt.Sprintf("host=%s port=%d dbname=%s user=%s password=%s sslmode=%s",
@@ -61,10 +66,8 @@ func (r *TimeSeriesRepository) Connect(ctx context.Context) error {
 
 	r.db = db
 
-	// Initialize schema
-	if err := r.initializeSchema(ctx); err != nil {
-		return fmt.Errorf("failed to initialize schema: %w", err)
-	}
+	// Note: Schema initialization is now handled by migrations
+	// No longer calling initializeSchema() here
 
 	return nil
 }

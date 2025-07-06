@@ -6,14 +6,19 @@ import (
 
 	"m-data-storage/internal/domain/entities"
 	"m-data-storage/internal/domain/interfaces"
+	"m-data-storage/internal/infrastructure/storage/migrations"
 	"m-data-storage/internal/infrastructure/storage/questdb"
 	"m-data-storage/internal/infrastructure/storage/sqlite"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Manager implements StorageManager interface
 type Manager struct {
 	metadata   interfaces.MetadataStorage
 	timeSeries interfaces.TimeSeriesStorage
+	migrations *migrations.Manager
+	logger     *logrus.Logger
 }
 
 // Config holds configuration for storage manager
@@ -38,7 +43,11 @@ type QuestDBConfig struct {
 }
 
 // NewManager creates a new storage manager
-func NewManager(config Config) (*Manager, error) {
+func NewManager(config Config, logger *logrus.Logger) (*Manager, error) {
+	if logger == nil {
+		logger = logrus.New()
+	}
+
 	// Create SQLite repository for metadata
 	metadataRepo, err := sqlite.NewMetadataRepository(config.SQLite.DatabasePath)
 	if err != nil {
@@ -59,19 +68,31 @@ func NewManager(config Config) (*Manager, error) {
 	return &Manager{
 		metadata:   metadataRepo,
 		timeSeries: timeSeriesRepo,
+		migrations: nil, // Will be initialized during Initialize()
+		logger:     logger,
 	}, nil
 }
 
 // Initialize initializes both storage systems
 func (m *Manager) Initialize(ctx context.Context) error {
-	// Initialize metadata storage (SQLite)
-	if err := m.metadata.Connect(ctx); err != nil {
-		return fmt.Errorf("failed to initialize metadata storage: %w", err)
-	}
-
-	// Initialize time series storage (QuestDB)
+	// Initialize time series storage (QuestDB) first to get connection
 	if err := m.timeSeries.Connect(ctx); err != nil {
 		return fmt.Errorf("failed to initialize time series storage: %w", err)
+	}
+
+	// Create migration manager now that we have database connections
+	sqliteDB := m.metadata.GetDB()
+	questDB := m.timeSeries.GetDB()
+
+	migrationManager, err := migrations.NewManager(sqliteDB, questDB, m.logger)
+	if err != nil {
+		return fmt.Errorf("failed to create migration manager: %w", err)
+	}
+	m.migrations = migrationManager
+
+	// Run migrations
+	if err := m.RunMigrations(ctx); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	return nil
@@ -216,6 +237,47 @@ func (m *Manager) DeleteBrokerConfig(ctx context.Context, brokerID string) error
 // CleanupOldData removes old time series data
 func (m *Manager) CleanupOldData(ctx context.Context, retentionPeriod interface{}) error {
 	// This would need proper implementation based on retention policy
+	return nil
+}
+
+// RunMigrations runs database migrations for both SQLite and QuestDB
+func (m *Manager) RunMigrations(ctx context.Context) error {
+	if m.migrations == nil {
+		return fmt.Errorf("migration manager not initialized")
+	}
+
+	m.logger.Info("Running database migrations...")
+
+	if err := m.migrations.MigrateUp(ctx); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	m.logger.Info("Database migrations completed successfully")
+	return nil
+}
+
+// GetMigrationStatus returns the current migration status
+func (m *Manager) GetMigrationStatus(ctx context.Context) (*migrations.DatabaseMigrationStatus, error) {
+	if m.migrations == nil {
+		return nil, fmt.Errorf("migration manager not initialized")
+	}
+
+	return m.migrations.Status(ctx)
+}
+
+// RollbackMigrations rolls back migrations to a specific version
+func (m *Manager) RollbackMigrations(ctx context.Context, targetVersion int64) error {
+	if m.migrations == nil {
+		return fmt.Errorf("migration manager not initialized")
+	}
+
+	m.logger.WithField("target_version", targetVersion).Info("Rolling back migrations...")
+
+	if err := m.migrations.MigrateDown(ctx, targetVersion, targetVersion); err != nil {
+		return fmt.Errorf("failed to rollback migrations: %w", err)
+	}
+
+	m.logger.WithField("target_version", targetVersion).Info("Migration rollback completed successfully")
 	return nil
 }
 
