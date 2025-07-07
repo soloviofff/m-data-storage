@@ -55,8 +55,44 @@ type DataValidator interface {
 	ValidateTicker(ticker entities.Ticker) error
 	ValidateCandle(candle entities.Candle) error
 	ValidateOrderBook(orderBook entities.OrderBook) error
-	ValidateInstrument(instrument entities.InstrumentInfo) error
-	ValidateSubscription(subscription entities.InstrumentSubscription) error
+	ValidateTimeframe(timeframe string) error
+	ValidateMarketType(marketType string) error
+	ValidateInstrumentType(instrumentType string) error
+}
+
+// StorageService - интерфейс для высокоуровневых операций с хранилищем
+type StorageService interface {
+	// Сохранение отдельных записей с пакетной обработкой
+	SaveTicker(ctx context.Context, ticker entities.Ticker) error
+	SaveCandle(ctx context.Context, candle entities.Candle) error
+	SaveOrderBook(ctx context.Context, orderBook entities.OrderBook) error
+
+	// Сохранение множественных записей
+	SaveTickers(ctx context.Context, tickers []entities.Ticker) error
+	SaveCandles(ctx context.Context, candles []entities.Candle) error
+	SaveOrderBooks(ctx context.Context, orderBooks []entities.OrderBook) error
+
+	// Получение данных
+	GetTickers(ctx context.Context, filter TickerFilter) ([]entities.Ticker, error)
+	GetCandles(ctx context.Context, filter CandleFilter) ([]entities.Candle, error)
+	GetOrderBooks(ctx context.Context, filter OrderBookFilter) ([]entities.OrderBook, error)
+
+	// Управление буферами
+	FlushAll(ctx context.Context) error
+	GetStats() StorageServiceStats
+
+	// Управление жизненным циклом
+	Close(ctx context.Context) error
+}
+
+// StorageServiceStats - статистика работы сервиса хранения
+type StorageServiceStats struct {
+	TickersSaved    int64     `json:"tickers_saved"`
+	CandlesSaved    int64     `json:"candles_saved"`
+	OrderBooksSaved int64     `json:"order_books_saved"`
+	BatchesFlashed  int64     `json:"batches_flashed"`
+	ErrorsCount     int64     `json:"errors_count"`
+	LastFlushTime   time.Time `json:"last_flush_time"`
 }
 
 // DataCollector - интерфейс для сбора данных

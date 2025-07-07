@@ -78,7 +78,8 @@ func (c *Container) InitializeServices() error {
 	dataValidator := services.NewDataValidatorService()
 	c.Register("data.validator", dataValidator)
 
-	// TODO: Добавить другие сервисы по мере их реализации
+	// TODO: Инициализировать StorageManager и StorageService
+	// Пока оставляем как TODO, так как нужна конфигурация для подключения к БД
 
 	c.logger.Info("All services initialized successfully")
 	return nil
