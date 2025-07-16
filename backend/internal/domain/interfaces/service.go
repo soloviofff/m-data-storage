@@ -115,6 +115,75 @@ type DataCollector interface {
 	Health() error
 }
 
+// BrokerStorageIntegration - интерфейс для интеграции брокеров с хранилищем
+type BrokerStorageIntegration interface {
+	// Управление жизненным циклом
+	Start(ctx context.Context) error
+	Stop() error
+
+	// Управление брокерами
+	AddBroker(brokerID string, broker Broker) error
+	RemoveBroker(brokerID string) error
+
+	// Статистика и мониторинг
+	GetStats() BrokerStorageIntegrationStats
+	GetBrokerStats(brokerID string) (BrokerIntegrationStats, error)
+	Health() error
+}
+
+// BrokerStorageIntegrationStats - статистика интеграции брокеров с хранилищем
+type BrokerStorageIntegrationStats struct {
+	ActiveBrokers    int       `json:"active_brokers"`
+	TotalTickers     int64     `json:"total_tickers"`
+	TotalCandles     int64     `json:"total_candles"`
+	TotalOrderBooks  int64     `json:"total_orderbooks"`
+	TotalErrors      int64     `json:"total_errors"`
+	LastDataReceived time.Time `json:"last_data_received"`
+	StartedAt        time.Time `json:"started_at"`
+}
+
+// BrokerIntegrationStats - статистика интеграции по брокеру
+type BrokerIntegrationStats struct {
+	BrokerID            string    `json:"broker_id"`
+	TickersProcessed    int64     `json:"tickers_processed"`
+	CandlesProcessed    int64     `json:"candles_processed"`
+	OrderBooksProcessed int64     `json:"orderbooks_processed"`
+	Errors              int64     `json:"errors"`
+	LastDataReceived    time.Time `json:"last_data_received"`
+	StartedAt           time.Time `json:"started_at"`
+}
+
+// DataPipeline - интерфейс для управления потоками данных
+type DataPipeline interface {
+	// Управление жизненным циклом
+	Start(ctx context.Context) error
+	Stop() error
+
+	// Управление брокерами
+	AddBroker(ctx context.Context, config BrokerConfig) error
+	RemoveBroker(ctx context.Context, brokerID string) error
+
+	// Управление подписками
+	Subscribe(ctx context.Context, brokerID string, subscriptions []entities.InstrumentSubscription) error
+	Unsubscribe(ctx context.Context, brokerID string, subscriptions []entities.InstrumentSubscription) error
+
+	// Статистика и мониторинг
+	GetStats() DataPipelineStats
+	GetIntegrationStats() BrokerStorageIntegrationStats
+	Health() error
+}
+
+// DataPipelineStats - статистика пайплайна данных
+type DataPipelineStats struct {
+	StartedAt          time.Time `json:"started_at"`
+	ConnectedBrokers   int       `json:"connected_brokers"`
+	TotalDataProcessed int64     `json:"total_data_processed"`
+	TotalErrors        int64     `json:"total_errors"`
+	LastHealthCheck    time.Time `json:"last_health_check"`
+	HealthChecksPassed int64     `json:"health_checks_passed"`
+	HealthChecksFailed int64     `json:"health_checks_failed"`
+}
+
 // DataQuery - интерфейс для запросов данных
 type DataQuery interface {
 	// Получение данных

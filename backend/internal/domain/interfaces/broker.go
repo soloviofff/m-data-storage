@@ -109,9 +109,19 @@ type BrokerFactory interface {
 // BrokerManager - менеджер для управления брокерами
 type BrokerManager interface {
 	Initialize(ctx context.Context) error
+
+	// Управление брокерами
+	AddBroker(ctx context.Context, config BrokerConfig) error
+	RemoveBroker(ctx context.Context, brokerID string) error
 	GetBroker(id string) (Broker, error)
 	GetAllBrokers() map[string]Broker
+	ListBrokers() []BrokerInfo
+
+	// Управление жизненным циклом
 	StartAll(ctx context.Context) error
 	StopAll() error
-	HealthCheck() map[string]error
+
+	// Мониторинг
+	Health() map[string]error
+	HealthCheck() map[string]error // Deprecated: use Health() instead
 }
