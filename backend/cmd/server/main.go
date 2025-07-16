@@ -7,10 +7,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"m-data-storage/internal/infrastructure/config"
+	"m-data-storage/internal/infrastructure/container"
 	"m-data-storage/internal/infrastructure/logger"
+	"m-data-storage/internal/infrastructure/server"
 )
 
 func main() {
@@ -63,34 +64,82 @@ func main() {
 func runServer(ctx context.Context, cfg *config.Config, log *logger.Logger) error {
 	log.WithComponent("server").Info("Initializing server components")
 
-	// TODO: Полная инициализация компонентов
-	// 1. Инициализация хранилищ (SQLite + QuestDB)
-	// 2. Инициализация сервисов (валидатор, процессор данных)
-	// 3. Инициализация менеджера брокеров
-	// 4. Инициализация HTTP сервера
-	// 5. Запуск сбора данных
+	// 1. Инициализация контейнера зависимостей
+	container, err := initializeContainer(ctx, cfg, log)
+	if err != nil {
+		return fmt.Errorf("failed to initialize container: %w", err)
+	}
+	defer container.Shutdown()
+
+	// 2. Инициализация HTTP сервера
+	httpServer, err := initializeHTTPServer(cfg, container, log)
+	if err != nil {
+		return fmt.Errorf("failed to initialize HTTP server: %w", err)
+	}
+
+	// 3. Запуск HTTP сервера
+	serverErrChan := make(chan error, 1)
+	go func() {
+		if err := httpServer.Start(); err != nil {
+			serverErrChan <- fmt.Errorf("HTTP server failed: %w", err)
+		}
+	}()
+
+	log.WithComponent("server").Info("All components initialized successfully")
+
+	// Ждем сигнала завершения или ошибки сервера
+	select {
+	case <-ctx.Done():
+		log.WithComponent("server").Info("Received shutdown signal")
+	case err := <-serverErrChan:
+		log.WithComponent("server").WithError(err).Error("Server error occurred")
+		return err
+	}
 
 	// Graceful shutdown
+	log.WithComponent("server").Info("Starting graceful shutdown")
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.API.ShutdownTimeout)
 	defer shutdownCancel()
 
-	// Ждем сигнала завершения
-	<-ctx.Done()
-
-	log.WithComponent("server").Info("Starting graceful shutdown")
-
-	// TODO: Graceful shutdown всех компонентов
-	// 1. Остановка сбора данных
-	// 2. Остановка HTTP сервера
-	// 3. Остановка брокеров
-	// 4. Закрытие хранилищ
-
-	// Даем время на завершение операций
-	select {
-	case <-time.After(1 * time.Second):
-	case <-shutdownCtx.Done():
-		return shutdownCtx.Err()
+	// Остановка HTTP сервера
+	if err := httpServer.Stop(shutdownCtx); err != nil {
+		log.WithComponent("server").WithError(err).Error("Failed to stop HTTP server gracefully")
+		return err
 	}
 
+	log.WithComponent("server").Info("Graceful shutdown completed")
 	return nil
+}
+
+// initializeContainer инициализирует контейнер зависимостей
+func initializeContainer(ctx context.Context, cfg *config.Config, log *logger.Logger) (*container.Container, error) {
+	log.WithComponent("container").Info("Initializing dependency injection container")
+
+	// Создаем контейнер
+	c := container.NewContainer(cfg, log)
+
+	// Инициализируем сервисы
+	if err := c.InitializeServices(); err != nil {
+		return nil, fmt.Errorf("failed to initialize services: %w", err)
+	}
+
+	log.WithComponent("container").Info("Dependency injection container initialized successfully")
+	return c, nil
+}
+
+// initializeHTTPServer инициализирует HTTP сервер
+func initializeHTTPServer(cfg *config.Config, container *container.Container, log *logger.Logger) (*server.Server, error) {
+	log.WithComponent("http").Info("Initializing HTTP server")
+
+	// Создаем HTTP сервер
+	httpServer := server.NewServer(cfg, container, log)
+
+	// Настраиваем middleware
+	httpServer.SetupMiddleware()
+
+	// Настраиваем маршруты
+	httpServer.SetupRoutes()
+
+	log.WithComponent("http").Info("HTTP server initialized successfully")
+	return httpServer, nil
 }
