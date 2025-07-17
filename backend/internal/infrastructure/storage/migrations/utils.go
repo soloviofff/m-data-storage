@@ -11,13 +11,13 @@ import (
 	"time"
 )
 
-// calculateChecksum вычисляет контрольную сумму SQL
+// calculateChecksum calculates SQL checksum
 func calculateChecksum(sql string) string {
 	hash := sha256.Sum256([]byte(sql))
 	return fmt.Sprintf("%x", hash)
 }
 
-// LoadMigrationsFromFS загружает миграции из файловой системы
+// LoadMigrationsFromFS loads migrations from filesystem
 func LoadMigrationsFromFS(fsys fs.FS, dir string) ([]Migration, error) {
 	var migrations []Migration
 
@@ -45,15 +45,15 @@ func LoadMigrationsFromFS(fsys fs.FS, dir string) ([]Migration, error) {
 	return migrations, err
 }
 
-// parseMigrationFile парсит файл миграции
+// parseMigrationFile parses migration file
 func parseMigrationFile(fsys fs.FS, path string) (*Migration, error) {
-	// Извлекаем версию и имя из имени файла
-	// Ожидаемый формат: 001_create_tables.up.sql или 001_create_tables.down.sql
+	// Extract version and name from filename
+	// Expected format: 001_create_tables.up.sql or 001_create_tables.down.sql
 	filename := filepath.Base(path)
 
-	// Проверяем, является ли это up миграцией
+	// Check if this is an up migration
 	if !strings.Contains(filename, ".up.sql") {
-		return nil, nil // Пропускаем down файлы, они будут обработаны отдельно
+		return nil, nil // Skip down files, they will be processed separately
 	}
 
 	version, name, err := parseFilename(filename)
@@ -61,13 +61,13 @@ func parseMigrationFile(fsys fs.FS, path string) (*Migration, error) {
 		return nil, err
 	}
 
-	// Читаем up SQL
+	// Read up SQL
 	upSQL, err := fs.ReadFile(fsys, path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read up SQL: %w", err)
 	}
 
-	// Ищем соответствующий down файл
+	// Look for corresponding down file
 	downPath := strings.Replace(path, ".up.sql", ".down.sql", 1)
 	var downSQL []byte
 	if downFile, err := fs.ReadFile(fsys, downPath); err == nil {
@@ -85,10 +85,10 @@ func parseMigrationFile(fsys fs.FS, path string) (*Migration, error) {
 	return &migration, nil
 }
 
-// parseFilename извлекает версию и имя из имени файла
+// parseFilename extracts version and name from filename
 func parseFilename(filename string) (int64, string, error) {
-	// Регулярное выражение для парсинга имени файла
-	// Формат: 001_create_tables.up.sql
+	// Regular expression for parsing filename
+	// Format: 001_create_tables.up.sql
 	re := regexp.MustCompile(`^(\d+)_(.+)\.up\.sql$`)
 	matches := re.FindStringSubmatch(filename)
 
@@ -106,40 +106,40 @@ func parseFilename(filename string) (int64, string, error) {
 	return version, name, nil
 }
 
-// ValidateMigrations проверяет корректность миграций
+// ValidateMigrations validates migration correctness
 func ValidateMigrations(migrations []Migration) error {
 	if len(migrations) == 0 {
 		return nil
 	}
 
-	// Проверяем уникальность версий
+	// Check version uniqueness
 	versions := make(map[int64]bool)
 	names := make(map[string]bool)
 
 	for _, migration := range migrations {
-		// Проверяем уникальность версии
+		// Check version uniqueness
 		if versions[migration.Version] {
 			return fmt.Errorf("duplicate migration version: %d", migration.Version)
 		}
 		versions[migration.Version] = true
 
-		// Проверяем уникальность имени
+		// Check name uniqueness
 		if names[migration.Name] {
 			return fmt.Errorf("duplicate migration name: %s", migration.Name)
 		}
 		names[migration.Name] = true
 
-		// Проверяем, что версия положительная
+		// Check that version is positive
 		if migration.Version <= 0 {
 			return fmt.Errorf("migration version must be positive: %d", migration.Version)
 		}
 
-		// Проверяем, что есть up SQL
+		// Check that up SQL exists
 		if strings.TrimSpace(migration.UpSQL) == "" {
 			return fmt.Errorf("migration %d (%s) has empty up SQL", migration.Version, migration.Name)
 		}
 
-		// Проверяем имя
+		// Check name
 		if strings.TrimSpace(migration.Name) == "" {
 			return fmt.Errorf("migration %d has empty name", migration.Version)
 		}
@@ -148,12 +148,12 @@ func ValidateMigrations(migrations []Migration) error {
 	return nil
 }
 
-// GenerateMigrationFilename генерирует имя файла для новой миграции
+// GenerateMigrationFilename generates filename for new migration
 func GenerateMigrationFilename(version int64, name string) (string, string) {
-	// Заменяем пробелы на подчеркивания и приводим к нижнему регистру
+	// Replace spaces with underscores and convert to lowercase
 	safeName := strings.ToLower(strings.ReplaceAll(name, " ", "_"))
 
-	// Удаляем недопустимые символы
+	// Remove invalid characters
 	re := regexp.MustCompile(`[^a-z0-9_]`)
 	safeName = re.ReplaceAllString(safeName, "")
 
@@ -163,7 +163,7 @@ func GenerateMigrationFilename(version int64, name string) (string, string) {
 	return upFilename, downFilename
 }
 
-// CreateMigrationTemplate создает шаблон миграции
+// CreateMigrationTemplate creates migration template
 func CreateMigrationTemplate(name, description string) (upSQL, downSQL string) {
 	timestamp := time.Now().Format("2006-01-02")
 
@@ -186,7 +186,7 @@ func CreateMigrationTemplate(name, description string) (upSQL, downSQL string) {
 	return upSQL, downSQL
 }
 
-// MigrationInfo содержит информацию о миграции для отображения
+// MigrationInfo contains migration information for display
 type MigrationInfo struct {
 	Version     int64  `json:"version"`
 	Name        string `json:"name"`
@@ -196,7 +196,7 @@ type MigrationInfo struct {
 	CanRollback bool   `json:"can_rollback"`
 }
 
-// GetMigrationInfo преобразует статус миграций в информацию для отображения
+// GetMigrationInfo converts migration status to display information
 func GetMigrationInfo(statuses []MigrationStatus) []MigrationInfo {
 	info := make([]MigrationInfo, len(statuses))
 

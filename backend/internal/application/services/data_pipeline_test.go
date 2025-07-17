@@ -14,7 +14,7 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// MockDataPipeline для тестирования
+// MockDataPipeline for testing
 type MockDataPipeline struct {
 	mock.Mock
 }
@@ -84,9 +84,9 @@ func TestDataPipelineService_StartStop(t *testing.T) {
 	mockStorageIntegration := &MockBrokerStorageIntegration{}
 	logger := logrus.New()
 	config := DefaultDataPipelineConfig()
-	config.AutoConnectBrokers = false // Отключаем автоподключение для простоты
+	config.AutoConnectBrokers = false // Disable auto-connect for simplicity
 
-	// Настраиваем моки
+	// Setup mocks
 	mockStorageIntegration.On("Start", mock.Anything).Return(nil)
 	mockStorageIntegration.On("Stop").Return(nil)
 
@@ -95,15 +95,15 @@ func TestDataPipelineService_StartStop(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Тестируем запуск
+	// Test start
 	err := pipeline.Start(ctx)
 	require.NoError(t, err)
 
-	// Проверяем статистику
+	// Check statistics
 	stats := pipeline.GetStats()
 	assert.False(t, stats.StartedAt.IsZero())
 
-	// Тестируем остановку
+	// Test stop
 	err = pipeline.Stop()
 	require.NoError(t, err)
 
@@ -117,14 +117,14 @@ func TestDataPipelineService_AddRemoveBroker(t *testing.T) {
 	config := DefaultDataPipelineConfig()
 	config.AutoConnectBrokers = false
 
-	// Создаем мок брокера
+	// Create mock broker
 	mockBroker := &MockBroker{}
 	mockBroker.On("Start", mock.Anything).Return(nil)
 	mockBroker.On("Stop").Return(nil).Maybe()
 	mockBroker.On("IsConnected").Return(true)
 	mockBroker.On("Connect", mock.Anything).Return(nil)
 
-	// Настраиваем моки
+	// Setup mocks
 	mockStorageIntegration.On("Start", mock.Anything).Return(nil)
 	mockStorageIntegration.On("Stop").Return(nil).Maybe()
 	mockBrokerManager.On("AddBroker", mock.Anything, mock.Anything).Return(nil)
@@ -138,12 +138,12 @@ func TestDataPipelineService_AddRemoveBroker(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Запускаем пайплайн
+	// Start pipeline
 	err := pipeline.Start(ctx)
 	require.NoError(t, err)
 	defer pipeline.Stop()
 
-	// Создаем конфигурацию брокера
+	// Create broker configuration
 	brokerConfig := interfaces.BrokerConfig{
 		ID:   "test-broker",
 		Name: "Test Broker",
@@ -153,11 +153,11 @@ func TestDataPipelineService_AddRemoveBroker(t *testing.T) {
 		},
 	}
 
-	// Тестируем добавление брокера
+	// Test adding broker
 	err = pipeline.AddBroker(ctx, brokerConfig)
 	require.NoError(t, err)
 
-	// Тестируем удаление брокера
+	// Test removing broker
 	err = pipeline.RemoveBroker(ctx, "test-broker")
 	require.NoError(t, err)
 
@@ -171,13 +171,13 @@ func TestDataPipelineService_Health(t *testing.T) {
 	logger := logrus.New()
 	config := DefaultDataPipelineConfig()
 
-	// Настраиваем моки
+	// Setup mocks
 	mockStorageIntegration.On("Health").Return(nil)
 	mockBrokerManager.On("Health").Return(map[string]error{})
 
 	pipeline := NewDataPipelineService(mockBrokerManager, mockStorageIntegration, logger, config)
 
-	// Тестируем проверку здоровья
+	// Test health check
 	err := pipeline.Health()
 	assert.NoError(t, err)
 
@@ -191,12 +191,12 @@ func TestDataPipelineService_HealthWithErrors(t *testing.T) {
 	logger := logrus.New()
 	config := DefaultDataPipelineConfig()
 
-	// Настраиваем моки с ошибками
+	// Setup mocks with errors
 	mockStorageIntegration.On("Health").Return(assert.AnError)
 
 	pipeline := NewDataPipelineService(mockBrokerManager, mockStorageIntegration, logger, config)
 
-	// Тестируем проверку здоровья с ошибкой
+	// Test health check with error
 	err := pipeline.Health()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "storage integration health check failed")
@@ -214,7 +214,7 @@ func TestDefaultDataPipelineConfig(t *testing.T) {
 	assert.Equal(t, 5*time.Second, config.ReconnectInterval)
 }
 
-// MockBrokerStorageIntegration для тестирования
+// MockBrokerStorageIntegration for testing
 type MockBrokerStorageIntegration struct {
 	mock.Mock
 }
@@ -249,7 +249,7 @@ func (m *MockBrokerStorageIntegration) Health() error {
 	return args.Error(0)
 }
 
-// MockBroker для тестирования
+// MockBroker for testing
 type MockBroker struct {
 	mock.Mock
 }

@@ -13,7 +13,7 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// MockStorageManager для тестирования
+// MockStorageManager for testing
 type MockStorageManager struct {
 	mock.Mock
 }
@@ -73,9 +73,9 @@ func (m *MockStorageManager) Health() map[string]error {
 	return args.Get(0).(map[string]error)
 }
 
-// Методы миграций не входят в интерфейс StorageManager, поэтому убираем их
+// Migration methods are not part of StorageManager interface, so we remove them
 
-// MockDataValidator для тестирования
+// MockDataValidator for testing
 type MockDataValidator struct {
 	mock.Mock
 }
@@ -135,7 +135,7 @@ func TestNewStorageService(t *testing.T) {
 	assert.Equal(t, config.BatchSize, service.batchSize)
 	assert.Equal(t, config.FlushInterval, service.flushInterval)
 
-	// Закрываем сервис
+	// Close service
 	ctx := context.Background()
 	service.Close(ctx)
 }
@@ -145,8 +145,8 @@ func TestStorageService_SaveTicker(t *testing.T) {
 	mockValidator := &MockDataValidator{}
 	logger := logrus.New()
 	config := StorageServiceConfig{
-		BatchSize:     2,             // Маленький размер для тестирования
-		FlushInterval: 1 * time.Hour, // Большой интервал, чтобы не мешал тестам
+		BatchSize:     2,             // Small size for testing
+		FlushInterval: 1 * time.Hour, // Large interval to not interfere with tests
 	}
 
 	service := NewStorageService(mockStorage, mockValidator, logger, config)
@@ -161,14 +161,14 @@ func TestStorageService_SaveTicker(t *testing.T) {
 		BrokerID:  "binance",
 	}
 
-	// Настраиваем моки
+	// Setup mocks
 	mockValidator.On("ValidateTicker", ticker).Return(nil)
 
-	// Первый тикер - должен добавиться в буфер
+	// First ticker - should be added to buffer
 	err := service.SaveTicker(ctx, ticker)
 	assert.NoError(t, err)
 
-	// Второй тикер - должен вызвать флаш
+	// Second ticker - should trigger flush
 	mockStorage.On("SaveTickers", ctx, mock.MatchedBy(func(tickers []entities.Ticker) bool {
 		return len(tickers) == 2
 	})).Return(nil)
@@ -176,7 +176,7 @@ func TestStorageService_SaveTicker(t *testing.T) {
 	err = service.SaveTicker(ctx, ticker)
 	assert.NoError(t, err)
 
-	// Проверяем, что моки были вызваны
+	// Check that mocks were called
 	mockValidator.AssertExpectations(t)
 	mockStorage.AssertExpectations(t)
 }
@@ -208,7 +208,7 @@ func TestStorageService_SaveTickers(t *testing.T) {
 		},
 	}
 
-	// Настраиваем моки
+	// Setup mocks
 	for _, ticker := range tickers {
 		mockValidator.On("ValidateTicker", ticker).Return(nil)
 	}
@@ -217,11 +217,11 @@ func TestStorageService_SaveTickers(t *testing.T) {
 	err := service.SaveTickers(ctx, tickers)
 	assert.NoError(t, err)
 
-	// Проверяем статистику
+	// Check statistics
 	stats := service.GetStats()
 	assert.Equal(t, int64(2), stats.TickersSaved)
 
-	// Проверяем, что моки были вызваны
+	// Check that mocks were called
 	mockValidator.AssertExpectations(t)
 	mockStorage.AssertExpectations(t)
 }
@@ -231,7 +231,7 @@ func TestStorageService_FlushAll(t *testing.T) {
 	mockValidator := &MockDataValidator{}
 	logger := logrus.New()
 	config := StorageServiceConfig{
-		BatchSize:     10, // Большой размер, чтобы не было автофлаша
+		BatchSize:     10, // Large size to prevent auto-flush
 		FlushInterval: 1 * time.Hour,
 	}
 
@@ -247,21 +247,21 @@ func TestStorageService_FlushAll(t *testing.T) {
 		BrokerID:  "binance",
 	}
 
-	// Настраиваем моки
+	// Setup mocks
 	mockValidator.On("ValidateTicker", ticker).Return(nil)
 	mockStorage.On("SaveTickers", ctx, mock.MatchedBy(func(tickers []entities.Ticker) bool {
 		return len(tickers) == 1
 	})).Return(nil)
 
-	// Добавляем тикер в буфер
+	// Add ticker to buffer
 	err := service.SaveTicker(ctx, ticker)
 	assert.NoError(t, err)
 
-	// Принудительно сбрасываем буферы
+	// Force flush buffers
 	err = service.FlushAll(ctx)
 	assert.NoError(t, err)
 
-	// Проверяем, что моки были вызваны
+	// Check that mocks were called
 	mockValidator.AssertExpectations(t)
 	mockStorage.AssertExpectations(t)
 }
@@ -275,7 +275,7 @@ func TestStorageService_GetStats(t *testing.T) {
 	service := NewStorageService(mockStorage, mockValidator, logger, config)
 	defer service.Close(context.Background())
 
-	// Проверяем начальную статистику
+	// Check initial statistics
 	stats := service.GetStats()
 	assert.Equal(t, int64(0), stats.TickersSaved)
 	assert.Equal(t, int64(0), stats.CandlesSaved)

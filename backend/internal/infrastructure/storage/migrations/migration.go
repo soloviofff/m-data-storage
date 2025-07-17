@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Migration представляет одну миграцию
+// Migration represents a single migration
 type Migration struct {
 	Version     int64
 	Name        string
@@ -17,7 +17,7 @@ type Migration struct {
 	Description string
 }
 
-// MigrationRecord представляет запись о выполненной миграции
+// MigrationRecord represents a record of executed migration
 type MigrationRecord struct {
 	Version   int64     `json:"version"`
 	Name      string    `json:"name"`
@@ -25,19 +25,19 @@ type MigrationRecord struct {
 	Checksum  string    `json:"checksum"`
 }
 
-// Migrator управляет миграциями базы данных
+// Migrator manages database migrations
 type Migrator struct {
 	db         *sql.DB
 	migrations []Migration
 	tableName  string
 }
 
-// NewMigrator создает новый мигратор
+// NewMigrator creates a new migrator
 func NewMigrator(db *sql.DB, tableName string) *Migrator {
 	if tableName == "" {
 		tableName = "schema_migrations"
 	}
-	
+
 	return &Migrator{
 		db:         db,
 		migrations: make([]Migration, 0),
@@ -45,24 +45,24 @@ func NewMigrator(db *sql.DB, tableName string) *Migrator {
 	}
 }
 
-// AddMigration добавляет миграцию в список
+// AddMigration adds migration to the list
 func (m *Migrator) AddMigration(migration Migration) {
 	m.migrations = append(m.migrations, migration)
-	
-	// Сортируем миграции по версии
+
+	// Sort migrations by version
 	sort.Slice(m.migrations, func(i, j int) bool {
 		return m.migrations[i].Version < m.migrations[j].Version
 	})
 }
 
-// AddMigrations добавляет несколько миграций
+// AddMigrations adds multiple migrations
 func (m *Migrator) AddMigrations(migrations []Migration) {
 	for _, migration := range migrations {
 		m.AddMigration(migration)
 	}
 }
 
-// Up выполняет все неприменённые миграции
+// Up executes all unapplied migrations
 func (m *Migrator) Up(ctx context.Context) error {
 	if err := m.ensureMigrationsTable(ctx); err != nil {
 		return fmt.Errorf("failed to ensure migrations table: %w", err)
@@ -76,7 +76,7 @@ func (m *Migrator) Up(ctx context.Context) error {
 	for _, migration := range m.migrations {
 		if _, applied := appliedVersions[migration.Version]; !applied {
 			if err := m.applyMigration(ctx, migration); err != nil {
-				return fmt.Errorf("failed to apply migration %d (%s): %w", 
+				return fmt.Errorf("failed to apply migration %d (%s): %w",
 					migration.Version, migration.Name, err)
 			}
 		}
@@ -85,7 +85,7 @@ func (m *Migrator) Up(ctx context.Context) error {
 	return nil
 }
 
-// Down откатывает миграции до указанной версии
+// Down rolls back migrations to specified version
 func (m *Migrator) Down(ctx context.Context, targetVersion int64) error {
 	if err := m.ensureMigrationsTable(ctx); err != nil {
 		return fmt.Errorf("failed to ensure migrations table: %w", err)
@@ -96,7 +96,7 @@ func (m *Migrator) Down(ctx context.Context, targetVersion int64) error {
 		return fmt.Errorf("failed to get applied versions: %w", err)
 	}
 
-	// Получаем миграции в обратном порядке
+	// Get migrations in reverse order
 	reversedMigrations := make([]Migration, len(m.migrations))
 	copy(reversedMigrations, m.migrations)
 	sort.Slice(reversedMigrations, func(i, j int) bool {
@@ -107,10 +107,10 @@ func (m *Migrator) Down(ctx context.Context, targetVersion int64) error {
 		if migration.Version <= targetVersion {
 			break
 		}
-		
+
 		if _, applied := appliedVersions[migration.Version]; applied {
 			if err := m.rollbackMigration(ctx, migration); err != nil {
-				return fmt.Errorf("failed to rollback migration %d (%s): %w", 
+				return fmt.Errorf("failed to rollback migration %d (%s): %w",
 					migration.Version, migration.Name, err)
 			}
 		}
@@ -119,7 +119,7 @@ func (m *Migrator) Down(ctx context.Context, targetVersion int64) error {
 	return nil
 }
 
-// Status возвращает статус миграций
+// Status returns migration status
 func (m *Migrator) Status(ctx context.Context) ([]MigrationStatus, error) {
 	if err := m.ensureMigrationsTable(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ensure migrations table: %w", err)
@@ -143,14 +143,14 @@ func (m *Migrator) Status(ctx context.Context) ([]MigrationStatus, error) {
 	return status, nil
 }
 
-// MigrationStatus представляет статус миграции
+// MigrationStatus represents migration status
 type MigrationStatus struct {
 	Migration Migration
 	Applied   bool
 	AppliedAt time.Time
 }
 
-// ensureMigrationsTable создает таблицу миграций, если она не существует
+// ensureMigrationsTable creates migrations table if it doesn't exist
 func (m *Migrator) ensureMigrationsTable(ctx context.Context) error {
 	query := fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS %s (
@@ -165,7 +165,7 @@ func (m *Migrator) ensureMigrationsTable(ctx context.Context) error {
 	return err
 }
 
-// getAppliedVersions возвращает карту примененных версий
+// getAppliedVersions returns map of applied versions
 func (m *Migrator) getAppliedVersions(ctx context.Context) (map[int64]MigrationRecord, error) {
 	query := fmt.Sprintf(`
 		SELECT version, name, applied_at, checksum 
@@ -191,7 +191,7 @@ func (m *Migrator) getAppliedVersions(ctx context.Context) (map[int64]MigrationR
 	return versions, rows.Err()
 }
 
-// applyMigration применяет миграцию
+// applyMigration applies migration
 func (m *Migrator) applyMigration(ctx context.Context, migration Migration) error {
 	tx, err := m.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -199,12 +199,12 @@ func (m *Migrator) applyMigration(ctx context.Context, migration Migration) erro
 	}
 	defer tx.Rollback()
 
-	// Выполняем SQL миграции
+	// Execute migration SQL
 	if _, err := tx.ExecContext(ctx, migration.UpSQL); err != nil {
 		return fmt.Errorf("failed to execute migration SQL: %w", err)
 	}
 
-	// Записываем информацию о миграции
+	// Record migration information
 	checksum := calculateChecksum(migration.UpSQL)
 	insertQuery := fmt.Sprintf(`
 		INSERT INTO %s (version, name, checksum) 
@@ -218,7 +218,7 @@ func (m *Migrator) applyMigration(ctx context.Context, migration Migration) erro
 	return tx.Commit()
 }
 
-// rollbackMigration откатывает миграцию
+// rollbackMigration rolls back migration
 func (m *Migrator) rollbackMigration(ctx context.Context, migration Migration) error {
 	if migration.DownSQL == "" {
 		return fmt.Errorf("migration %d (%s) has no down SQL", migration.Version, migration.Name)
@@ -230,12 +230,12 @@ func (m *Migrator) rollbackMigration(ctx context.Context, migration Migration) e
 	}
 	defer tx.Rollback()
 
-	// Выполняем SQL отката
+	// Execute rollback SQL
 	if _, err := tx.ExecContext(ctx, migration.DownSQL); err != nil {
 		return fmt.Errorf("failed to execute rollback SQL: %w", err)
 	}
 
-	// Удаляем запись о миграции
+	// Delete migration record
 	deleteQuery := fmt.Sprintf(`DELETE FROM %s WHERE version = ?`, m.tableName)
 	if _, err := tx.ExecContext(ctx, deleteQuery, migration.Version); err != nil {
 		return fmt.Errorf("failed to remove migration record: %w", err)

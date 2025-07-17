@@ -15,7 +15,7 @@ import (
 	"m-data-storage/internal/infrastructure/broker"
 )
 
-// MockBrokerManager для тестирования
+// MockBrokerManager for testing
 type MockBrokerManager struct {
 	mock.Mock
 }
@@ -70,7 +70,7 @@ func (m *MockBrokerManager) HealthCheck() map[string]error {
 	return args.Get(0).(map[string]error)
 }
 
-// MockStorageService для тестирования
+// MockStorageService for testing
 type MockStorageService struct {
 	mock.Mock
 }
@@ -154,7 +154,7 @@ func TestBrokerStorageIntegration_StartStop(t *testing.T) {
 	mockStorageService := &MockStorageService{}
 	logger := logrus.New()
 
-	// Настраиваем мок для возврата пустого списка брокеров
+	// Setup mock to return empty broker list
 	mockBrokerManager.On("GetAllBrokers").Return(map[string]interfaces.Broker{})
 
 	integration := NewBrokerStorageIntegration(mockBrokerManager, mockStorageService, logger)
@@ -162,16 +162,16 @@ func TestBrokerStorageIntegration_StartStop(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Тестируем запуск
+	// Test start
 	err := integration.Start(ctx)
 	require.NoError(t, err)
 
-	// Проверяем статистику
+	// Check statistics
 	stats := integration.GetStats()
 	assert.Equal(t, 0, stats.ActiveBrokers)
 	assert.False(t, stats.StartedAt.IsZero())
 
-	// Тестируем остановку
+	// Test stop
 	err = integration.Stop()
 	require.NoError(t, err)
 
@@ -183,7 +183,7 @@ func TestBrokerStorageIntegration_AddRemoveBroker(t *testing.T) {
 	mockStorageService := &MockStorageService{}
 	logger := logrus.New()
 
-	// Настраиваем мок для возврата пустого списка брокеров
+	// Setup mock to return empty broker list
 	mockBrokerManager.On("GetAllBrokers").Return(map[string]interfaces.Broker{})
 
 	integration := NewBrokerStorageIntegration(mockBrokerManager, mockStorageService, logger)
@@ -191,11 +191,11 @@ func TestBrokerStorageIntegration_AddRemoveBroker(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Запускаем интеграцию
+	// Start integration
 	err := integration.Start(ctx)
 	require.NoError(t, err)
 
-	// Создаем тестовый брокер
+	// Create test broker
 	config := interfaces.BrokerConfig{
 		ID:   "test-broker",
 		Name: "Test Broker",
@@ -207,33 +207,33 @@ func TestBrokerStorageIntegration_AddRemoveBroker(t *testing.T) {
 
 	testBroker := broker.NewMockCryptoBroker(config, logger)
 
-	// Тестируем добавление брокера
+	// Test adding broker
 	err = integration.AddBroker("test-broker", testBroker)
 	require.NoError(t, err)
 
-	// Проверяем статистику
+	// Check statistics
 	stats := integration.GetStats()
 	assert.Equal(t, 1, stats.ActiveBrokers)
 
-	// Проверяем статистику по брокеру
+	// Check broker statistics
 	brokerStats, err := integration.GetBrokerStats("test-broker")
 	require.NoError(t, err)
 	assert.Equal(t, "test-broker", brokerStats.BrokerID)
 	assert.False(t, brokerStats.StartedAt.IsZero())
 
-	// Тестируем удаление брокера
+	// Test removing broker
 	err = integration.RemoveBroker("test-broker")
 	require.NoError(t, err)
 
-	// Проверяем, что брокер удален
+	// Check that broker is removed
 	stats = integration.GetStats()
 	assert.Equal(t, 0, stats.ActiveBrokers)
 
-	// Проверяем, что статистика по брокеру недоступна
+	// Check that broker statistics are unavailable
 	_, err = integration.GetBrokerStats("test-broker")
 	assert.Error(t, err)
 
-	// Останавливаем интеграцию
+	// Stop integration
 	err = integration.Stop()
 	require.NoError(t, err)
 
@@ -245,12 +245,12 @@ func TestBrokerStorageIntegration_DataProcessing(t *testing.T) {
 	mockStorageService := &MockStorageService{}
 	logger := logrus.New()
 
-	// Настраиваем мок для возврата пустого списка брокеров
+	// Setup mock to return empty broker list
 	mockBrokerManager.On("GetAllBrokers").Return(map[string]interfaces.Broker{})
 
-	// Настраиваем мок для сохранения данных
+	// Setup mock for data saving
 	mockStorageService.On("SaveTicker", mock.Anything, mock.AnythingOfType("entities.Ticker")).Return(nil)
-	// Candle и OrderBook генерируются с определенной вероятностью, поэтому делаем их опциональными
+	// Candle and OrderBook are generated with certain probability, so make them optional
 	mockStorageService.On("SaveCandle", mock.Anything, mock.AnythingOfType("entities.Candle")).Return(nil).Maybe()
 	mockStorageService.On("SaveOrderBook", mock.Anything, mock.AnythingOfType("entities.OrderBook")).Return(nil).Maybe()
 
@@ -259,11 +259,11 @@ func TestBrokerStorageIntegration_DataProcessing(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Запускаем интеграцию
+	// Start integration
 	err := integration.Start(ctx)
 	require.NoError(t, err)
 
-	// Создаем тестовый брокер
+	// Create test broker
 	config := interfaces.BrokerConfig{
 		ID:   "test-broker",
 		Name: "Test Broker",
@@ -275,15 +275,15 @@ func TestBrokerStorageIntegration_DataProcessing(t *testing.T) {
 
 	testBroker := broker.NewMockCryptoBroker(config, logger)
 
-	// Запускаем брокер для генерации данных
+	// Start broker for data generation
 	err = testBroker.Start(ctx)
 	require.NoError(t, err)
 
-	// Добавляем брокер в интеграцию
+	// Add broker to integration
 	err = integration.AddBroker("test-broker", testBroker)
 	require.NoError(t, err)
 
-	// Подписываемся на данные
+	// Subscribe to data
 	subscriptions := []entities.InstrumentSubscription{
 		{
 			Symbol: "BTCUSDT",
@@ -294,10 +294,10 @@ func TestBrokerStorageIntegration_DataProcessing(t *testing.T) {
 	err = testBroker.Subscribe(ctx, subscriptions)
 	require.NoError(t, err)
 
-	// Ждем обработки данных
+	// Wait for data processing
 	time.Sleep(2 * time.Second)
 
-	// Проверяем статистику
+	// Check statistics
 	stats := integration.GetStats()
 	assert.Equal(t, 1, stats.ActiveBrokers)
 
@@ -305,11 +305,11 @@ func TestBrokerStorageIntegration_DataProcessing(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "test-broker", brokerStats.BrokerID)
 
-	// Останавливаем брокер
+	// Stop broker
 	err = testBroker.Stop()
 	require.NoError(t, err)
 
-	// Останавливаем интеграцию
+	// Stop integration
 	err = integration.Stop()
 	require.NoError(t, err)
 
@@ -322,12 +322,12 @@ func TestBrokerStorageIntegration_Health(t *testing.T) {
 	mockStorageService := &MockStorageService{}
 	logger := logrus.New()
 
-	// Настраиваем мок для возврата пустого списка брокеров
+	// Setup mock to return empty broker list
 	mockBrokerManager.On("GetAllBrokers").Return(map[string]interfaces.Broker{})
 
 	integration := NewBrokerStorageIntegration(mockBrokerManager, mockStorageService, logger)
 
-	// Запускаем интеграцию
+	// Start integration
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -335,12 +335,12 @@ func TestBrokerStorageIntegration_Health(t *testing.T) {
 	require.NoError(t, err)
 	defer integration.Stop()
 
-	// Тестируем здоровье без активных брокеров
+	// Test health without active brokers
 	err = integration.Health()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no active broker integrations")
 
-	// Создаем и добавляем тестовый брокер
+	// Create and add test broker
 	config := interfaces.BrokerConfig{
 		ID:   "test-broker",
 		Name: "Test Broker",
@@ -354,7 +354,7 @@ func TestBrokerStorageIntegration_Health(t *testing.T) {
 	err = integration.AddBroker("test-broker", testBroker)
 	require.NoError(t, err)
 
-	// Тестируем здоровье с активным брокером
+	// Test health with active broker
 	err = integration.Health()
 	assert.NoError(t, err)
 
