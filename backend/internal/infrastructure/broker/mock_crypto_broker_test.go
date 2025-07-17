@@ -59,12 +59,12 @@ func TestMockCryptoBroker_GetMarkets(t *testing.T) {
 	logger := logrus.New()
 	broker := NewMockCryptoBroker(config, logger)
 
-	// Тестируем получение спот рынков
+	// Test spot markets retrieval
 	spotMarkets, err := broker.GetSpotMarkets()
 	require.NoError(t, err)
 	assert.NotEmpty(t, spotMarkets)
 
-	// Проверяем, что есть популярные пары
+	// Check that popular pairs exist
 	symbols := make(map[string]bool)
 	for _, market := range spotMarkets {
 		symbols[market.Symbol] = true
@@ -72,12 +72,12 @@ func TestMockCryptoBroker_GetMarkets(t *testing.T) {
 	assert.True(t, symbols["BTCUSDT"])
 	assert.True(t, symbols["ETHUSDT"])
 
-	// Тестируем получение фьючерс рынков
+	// Test futures markets retrieval
 	futuresMarkets, err := broker.GetFuturesMarkets()
 	require.NoError(t, err)
 	assert.NotEmpty(t, futuresMarkets)
 
-	// Проверяем, что есть популярные фьючерсы
+	// Check that popular futures exist
 	futuresSymbols := make(map[string]bool)
 	for _, market := range futuresMarkets {
 		futuresSymbols[market.Symbol] = true
@@ -101,7 +101,7 @@ func TestMockCryptoBroker_GetContractInfo(t *testing.T) {
 	logger := logrus.New()
 	broker := NewMockCryptoBroker(config, logger)
 
-	// Тестируем получение информации о контракте
+	// Test contract information retrieval
 	contractInfo, err := broker.GetContractInfo("BTCUSDT")
 	require.NoError(t, err)
 	assert.NotNil(t, contractInfo)
@@ -109,7 +109,7 @@ func TestMockCryptoBroker_GetContractInfo(t *testing.T) {
 	assert.Greater(t, contractInfo.MaintMarginPercent, 0.0)
 	assert.Greater(t, contractInfo.RequiredMarginPercent, 0.0)
 
-	// Тестируем несуществующий символ
+	// Test non-existent symbol
 	_, err = broker.GetContractInfo("NONEXISTENT")
 	assert.Error(t, err)
 }
@@ -131,17 +131,17 @@ func TestMockCryptoBroker_Subscriptions(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Тестируем подписку на спот рынки
+	// Test spot markets subscription
 	err := broker.SubscribeSpot(ctx, []string{"BTCUSDT", "ETHUSDT"})
 	assert.NoError(t, err)
 
-	// Тестируем подписку на фьючерс рынки
+	// Test futures markets subscription
 	err = broker.SubscribeFutures(ctx, []string{"BTCUSDT", "ETHUSDT"})
 	assert.NoError(t, err)
 
-	// Проверяем, что подписки созданы
+	// Check that subscriptions are created
 	subscriptions := broker.GetSubscriptions()
-	assert.Len(t, subscriptions, 4) // 2 спот + 2 фьючерс
+	assert.Len(t, subscriptions, 4) // 2 spot + 2 futures
 }
 
 func TestMockCryptoBroker_DataChannels(t *testing.T) {
@@ -159,7 +159,7 @@ func TestMockCryptoBroker_DataChannels(t *testing.T) {
 	logger := logrus.New()
 	broker := NewMockCryptoBroker(config, logger)
 
-	// Проверяем, что каналы доступны
+	// Check that channels are available
 	tickerChan := broker.GetTickerChannel()
 	assert.NotNil(t, tickerChan)
 
@@ -197,21 +197,21 @@ func TestMockCryptoBroker_DataGeneration(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	// Запускаем брокер
+	// Start broker
 	err := broker.Start(ctx)
 	require.NoError(t, err)
 
-	// Подписываемся на данные
+	// Subscribe to data
 	err = broker.SubscribeSpot(ctx, []string{"BTCUSDT"})
 	require.NoError(t, err)
 
 	err = broker.SubscribeFutures(ctx, []string{"ETHUSDT"})
 	require.NoError(t, err)
 
-	// Ждем генерации данных
+	// Wait for data generation
 	time.Sleep(500 * time.Millisecond)
 
-	// Проверяем, что данные генерируются
+	// Check that data is being generated
 	tickerChan := broker.GetTickerChannel()
 	candleChan := broker.GetCandleChannel()
 	orderBookChan := broker.GetOrderBookChannel()
@@ -219,7 +219,7 @@ func TestMockCryptoBroker_DataGeneration(t *testing.T) {
 	markPriceChan := broker.GetMarkPriceChannel()
 	liquidationChan := broker.GetLiquidationChannel()
 
-	// Должны получить хотя бы некоторые данные
+	// Should receive at least some data
 	receivedTickers := 0
 	receivedCandles := 0
 	receivedOrderBooks := 0
@@ -266,10 +266,10 @@ func TestMockCryptoBroker_DataGeneration(t *testing.T) {
 	}
 
 checkResults:
-	// Проверяем, что получили данные
+	// Check that we received data
 	assert.Greater(t, receivedTickers, 0, "Should receive ticker data")
 
-	// Останавливаем брокер
+	// Stop broker
 	err = broker.Stop()
 	assert.NoError(t, err)
 }
@@ -292,7 +292,7 @@ func TestMockCryptoBroker_SupportedInstruments(t *testing.T) {
 	instruments := broker.GetSupportedInstruments()
 	assert.NotEmpty(t, instruments)
 
-	// Проверяем, что есть и спот и фьючерс инструменты
+	// Check that both spot and futures instruments exist
 	hasSpot := false
 	hasFutures := false
 

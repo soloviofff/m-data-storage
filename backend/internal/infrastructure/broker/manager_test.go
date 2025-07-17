@@ -46,7 +46,7 @@ func TestManager_AddBroker(t *testing.T) {
 
 	assert.Equal(t, 1, manager.GetBrokerCount())
 
-	// Проверяем, что брокер можно получить
+	// Check that broker can be retrieved
 	broker, err := manager.GetBroker("test-broker")
 	require.NoError(t, err)
 	assert.NotNil(t, broker)
@@ -79,11 +79,11 @@ func TestManager_AddBroker_Duplicate(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Добавляем первый раз
+	// Add first time
 	err := manager.AddBroker(ctx, config)
 	require.NoError(t, err)
 
-	// Пытаемся добавить второй раз
+	// Try to add second time
 	err = manager.AddBroker(ctx, config)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "already exists")
@@ -112,17 +112,17 @@ func TestManager_RemoveBroker(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Добавляем брокер
+	// Add broker
 	err := manager.AddBroker(ctx, config)
 	require.NoError(t, err)
 	assert.Equal(t, 1, manager.GetBrokerCount())
 
-	// Удаляем брокер
+	// Remove broker
 	err = manager.RemoveBroker(ctx, "test-broker")
 	require.NoError(t, err)
 	assert.Equal(t, 0, manager.GetBrokerCount())
 
-	// Пытаемся получить удаленный брокер
+	// Try to get removed broker
 	_, err = manager.GetBroker("test-broker")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
@@ -169,13 +169,13 @@ func TestManager_GetAllBrokers(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Добавляем брокеры
+	// Add brokers
 	for _, config := range configs {
 		err := manager.AddBroker(ctx, config)
 		require.NoError(t, err)
 	}
 
-	// Получаем все брокеры
+	// Get all brokers
 	brokers := manager.GetAllBrokers()
 	assert.Len(t, brokers, 2)
 	assert.Contains(t, brokers, "broker1")
@@ -205,24 +205,24 @@ func TestManager_StartStopAll(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Добавляем брокер
+	// Add broker
 	err := manager.AddBroker(ctx, config)
 	require.NoError(t, err)
 
-	// Запускаем все брокеры
+	// Start all brokers
 	err = manager.StartAll(ctx)
 	require.NoError(t, err)
 
-	// Проверяем, что брокер подключен
+	// Check that broker is connected
 	broker, err := manager.GetBroker("test-broker")
 	require.NoError(t, err)
 	assert.True(t, broker.IsConnected())
 
-	// Останавливаем все брокеры
+	// Stop all brokers
 	err = manager.StopAll()
 	require.NoError(t, err)
 
-	// Проверяем, что брокер отключен
+	// Check that broker is disconnected
 	assert.False(t, broker.IsConnected())
 }
 
@@ -249,20 +249,20 @@ func TestManager_HealthCheck(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Добавляем брокер
+	// Add broker
 	err := manager.AddBroker(ctx, config)
 	require.NoError(t, err)
 
-	// Проверяем здоровье (брокер не подключен)
+	// Check health (broker not connected)
 	health := manager.HealthCheck()
 	assert.Len(t, health, 1)
 	assert.Error(t, health["test-broker"])
 
-	// Подключаем брокер
+	// Connect broker
 	err = manager.StartAll(ctx)
 	require.NoError(t, err)
 
-	// Проверяем здоровье (брокер подключен)
+	// Check health (broker connected)
 	health = manager.HealthCheck()
 	assert.Len(t, health, 1)
 	assert.NoError(t, health["test-broker"])
@@ -291,19 +291,19 @@ func TestManager_GetConnectedBrokers(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Добавляем брокер
+	// Add broker
 	err := manager.AddBroker(ctx, config)
 	require.NoError(t, err)
 
-	// Проверяем подключенные брокеры (пока нет)
+	// Check connected brokers (none yet)
 	connected := manager.GetConnectedBrokers()
 	assert.Len(t, connected, 0)
 
-	// Подключаем брокер
+	// Connect broker
 	err = manager.StartAll(ctx)
 	require.NoError(t, err)
 
-	// Проверяем подключенные брокеры
+	// Check connected brokers
 	connected = manager.GetConnectedBrokers()
 	assert.Len(t, connected, 1)
 	assert.Contains(t, connected, "test-broker")

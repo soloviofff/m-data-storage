@@ -11,7 +11,7 @@ import (
 	"m-data-storage/internal/domain/entities"
 )
 
-// SubscriptionStatus представляет статус подписки
+// SubscriptionStatus represents subscription status
 type SubscriptionStatus string
 
 const (
@@ -21,7 +21,7 @@ const (
 	SubscriptionStatusError    SubscriptionStatus = "error"
 )
 
-// SubscriptionInfo содержит информацию о подписке
+// SubscriptionInfo contains subscription information
 type SubscriptionInfo struct {
 	Subscription entities.InstrumentSubscription `json:"subscription"`
 	Status       SubscriptionStatus              `json:"status"`
@@ -32,18 +32,18 @@ type SubscriptionInfo struct {
 	LastDataAt   time.Time                       `json:"last_data_at"`
 }
 
-// SubscriptionManager управляет подписками на инструменты
+// SubscriptionManager manages instrument subscriptions
 type SubscriptionManager struct {
 	subscriptions map[string]*SubscriptionInfo
 	logger        *logrus.Logger
 	mu            sync.RWMutex
 
-	// Колбэки для подписок
+	// Subscription callbacks
 	onSubscribe   func(ctx context.Context, subscription entities.InstrumentSubscription) error
 	onUnsubscribe func(ctx context.Context, subscription entities.InstrumentSubscription) error
 }
 
-// NewSubscriptionManager создает новый менеджер подписок
+// NewSubscriptionManager creates a new subscription manager
 func NewSubscriptionManager(logger *logrus.Logger) *SubscriptionManager {
 	if logger == nil {
 		logger = logrus.New()
@@ -55,7 +55,7 @@ func NewSubscriptionManager(logger *logrus.Logger) *SubscriptionManager {
 	}
 }
 
-// SetCallbacks устанавливает колбэки для подписок
+// SetCallbacks sets callbacks for subscriptions
 func (sm *SubscriptionManager) SetCallbacks(
 	onSubscribe func(ctx context.Context, subscription entities.InstrumentSubscription) error,
 	onUnsubscribe func(ctx context.Context, subscription entities.InstrumentSubscription) error,
@@ -67,7 +67,7 @@ func (sm *SubscriptionManager) SetCallbacks(
 	sm.onUnsubscribe = onUnsubscribe
 }
 
-// Subscribe подписывается на инструменты
+// Subscribe subscribes to instruments
 func (sm *SubscriptionManager) Subscribe(ctx context.Context, subscriptions []entities.InstrumentSubscription) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -77,7 +77,7 @@ func (sm *SubscriptionManager) Subscribe(ctx context.Context, subscriptions []en
 	for _, subscription := range subscriptions {
 		key := sm.getSubscriptionKey(subscription)
 
-		// Проверяем, не существует ли уже такая подписка
+		// Check if such subscription already exists
 		if existingInfo, exists := sm.subscriptions[key]; exists {
 			if existingInfo.Status == SubscriptionStatusActive {
 				sm.logger.WithFields(logrus.Fields{
@@ -89,7 +89,7 @@ func (sm *SubscriptionManager) Subscribe(ctx context.Context, subscriptions []en
 			}
 		}
 
-		// Создаем информацию о подписке
+		// Create subscription information
 		info := &SubscriptionInfo{
 			Subscription: subscription,
 			Status:       SubscriptionStatusPending,
@@ -99,7 +99,7 @@ func (sm *SubscriptionManager) Subscribe(ctx context.Context, subscriptions []en
 
 		sm.subscriptions[key] = info
 
-		// Вызываем колбэк подписки
+		// Call subscription callback
 		if sm.onSubscribe != nil {
 			if err := sm.onSubscribe(ctx, subscription); err != nil {
 				info.Status = SubscriptionStatusError
@@ -118,7 +118,7 @@ func (sm *SubscriptionManager) Subscribe(ctx context.Context, subscriptions []en
 			}
 		}
 
-		// Помечаем подписку как активную
+		// Mark subscription as active
 		info.Status = SubscriptionStatusActive
 		info.UpdatedAt = time.Now()
 
@@ -136,7 +136,7 @@ func (sm *SubscriptionManager) Subscribe(ctx context.Context, subscriptions []en
 	return nil
 }
 
-// Unsubscribe отписывается от инструментов
+// Unsubscribe unsubscribes from instruments
 func (sm *SubscriptionManager) Unsubscribe(ctx context.Context, subscriptions []entities.InstrumentSubscription) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -156,7 +156,7 @@ func (sm *SubscriptionManager) Unsubscribe(ctx context.Context, subscriptions []
 			continue
 		}
 
-		// Вызываем колбэк отписки
+		// Call unsubscription callback
 		if sm.onUnsubscribe != nil {
 			if err := sm.onUnsubscribe(ctx, subscription); err != nil {
 				errors = append(errors, fmt.Errorf("failed to unsubscribe from %s: %w", key, err))
@@ -171,7 +171,7 @@ func (sm *SubscriptionManager) Unsubscribe(ctx context.Context, subscriptions []
 			}
 		}
 
-		// Удаляем подписку
+		// Remove subscription
 		delete(sm.subscriptions, key)
 
 		sm.logger.WithFields(logrus.Fields{
@@ -188,7 +188,7 @@ func (sm *SubscriptionManager) Unsubscribe(ctx context.Context, subscriptions []
 	return nil
 }
 
-// GetSubscription возвращает информацию о подписке
+// GetSubscription returns subscription information
 func (sm *SubscriptionManager) GetSubscription(subscription entities.InstrumentSubscription) (*SubscriptionInfo, bool) {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
@@ -199,12 +199,12 @@ func (sm *SubscriptionManager) GetSubscription(subscription entities.InstrumentS
 		return nil, false
 	}
 
-	// Возвращаем копию для безопасности
+	// Return copy for safety
 	infoCopy := *info
 	return &infoCopy, true
 }
 
-// GetAllSubscriptions возвращает все подписки
+// GetAllSubscriptions returns all subscriptions
 func (sm *SubscriptionManager) GetAllSubscriptions() map[string]*SubscriptionInfo {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
@@ -218,7 +218,7 @@ func (sm *SubscriptionManager) GetAllSubscriptions() map[string]*SubscriptionInf
 	return result
 }
 
-// GetActiveSubscriptions возвращает активные подписки
+// GetActiveSubscriptions returns active subscriptions
 func (sm *SubscriptionManager) GetActiveSubscriptions() []entities.InstrumentSubscription {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
@@ -233,7 +233,7 @@ func (sm *SubscriptionManager) GetActiveSubscriptions() []entities.InstrumentSub
 	return active
 }
 
-// GetSubscriptionCount возвращает количество подписок по статусам
+// GetSubscriptionCount returns subscription count by status
 func (sm *SubscriptionManager) GetSubscriptionCount() map[SubscriptionStatus]int {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
@@ -246,7 +246,7 @@ func (sm *SubscriptionManager) GetSubscriptionCount() map[SubscriptionStatus]int
 	return counts
 }
 
-// UpdateDataReceived обновляет статистику получения данных для подписки
+// UpdateDataReceived updates data reception statistics for subscription
 func (sm *SubscriptionManager) UpdateDataReceived(subscription entities.InstrumentSubscription) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -259,7 +259,7 @@ func (sm *SubscriptionManager) UpdateDataReceived(subscription entities.Instrume
 	}
 }
 
-// MarkSubscriptionError помечает подписку как ошибочную
+// MarkSubscriptionError marks subscription as erroneous
 func (sm *SubscriptionManager) MarkSubscriptionError(subscription entities.InstrumentSubscription, err error) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -278,7 +278,7 @@ func (sm *SubscriptionManager) MarkSubscriptionError(subscription entities.Instr
 	}
 }
 
-// CleanupInactiveSubscriptions удаляет неактивные подписки
+// CleanupInactiveSubscriptions removes inactive subscriptions
 func (sm *SubscriptionManager) CleanupInactiveSubscriptions(maxAge time.Duration) int {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -303,19 +303,19 @@ func (sm *SubscriptionManager) CleanupInactiveSubscriptions(maxAge time.Duration
 	return len(removed)
 }
 
-// getSubscriptionKey генерирует ключ для подписки
+// getSubscriptionKey generates key for subscription
 func (sm *SubscriptionManager) getSubscriptionKey(subscription entities.InstrumentSubscription) string {
 	return fmt.Sprintf("%s_%s_%s", subscription.Symbol, subscription.Type, subscription.Market)
 }
 
-// Shutdown корректно завершает работу менеджера подписок
+// Shutdown gracefully shuts down the subscription manager
 func (sm *SubscriptionManager) Shutdown(ctx context.Context) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
 	sm.logger.Info("Shutting down subscription manager")
 
-	// Отписываемся от всех активных подписок
+	// Unsubscribe from all active subscriptions
 	var activeSubscriptions []entities.InstrumentSubscription
 	for _, info := range sm.subscriptions {
 		if info.Status == SubscriptionStatusActive {
@@ -326,7 +326,7 @@ func (sm *SubscriptionManager) Shutdown(ctx context.Context) error {
 	if len(activeSubscriptions) > 0 {
 		sm.logger.WithField("count", len(activeSubscriptions)).Info("Unsubscribing from active subscriptions")
 
-		// Временно разблокируем мьютекс для вызова Unsubscribe
+		// Temporarily unlock mutex for Unsubscribe call
 		sm.mu.Unlock()
 		err := sm.Unsubscribe(ctx, activeSubscriptions)
 		sm.mu.Lock()

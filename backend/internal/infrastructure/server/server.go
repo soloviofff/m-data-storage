@@ -15,7 +15,7 @@ import (
 	"m-data-storage/internal/infrastructure/logger"
 )
 
-// Server представляет HTTP сервер
+// Server represents HTTP server
 type Server struct {
 	httpServer          *http.Server
 	router              *mux.Router
@@ -26,7 +26,7 @@ type Server struct {
 	subscriptionHandler *handlers.SubscriptionHandler
 }
 
-// NewServer создает новый HTTP сервер
+// NewServer creates a new HTTP server
 func NewServer(cfg *config.Config, container *container.Container, logger *logger.Logger) *Server {
 	router := mux.NewRouter()
 
@@ -37,7 +37,7 @@ func NewServer(cfg *config.Config, container *container.Container, logger *logge
 		config:    cfg,
 	}
 
-	// Настраиваем HTTP сервер
+	// Configure HTTP server
 	server.httpServer = &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.API.Host, cfg.API.Port),
 		Handler:      router,
@@ -63,13 +63,13 @@ func (s *Server) SetupHandlers() error {
 	return nil
 }
 
-// SetupMiddleware настраивает middleware
+// SetupMiddleware configures middleware
 func (s *Server) SetupMiddleware() {
-	// Request ID middleware (должен быть первым)
+	// Request ID middleware (should be first)
 	requestIDMiddleware := middleware.NewRequestIDMiddleware()
 	s.router.Use(requestIDMiddleware.RequestID)
 
-	// Recovery middleware (должен быть вторым для перехвата паник)
+	// Recovery middleware (should be second to catch panics)
 	recoveryMiddleware := middleware.NewRecoveryMiddleware(s.logger)
 	s.router.Use(recoveryMiddleware.Recover)
 
@@ -94,17 +94,17 @@ func (s *Server) SetupMiddleware() {
 	s.router.Use(errorMiddleware.ErrorHandler)
 }
 
-// SetupRoutes настраивает маршруты
+// SetupRoutes configures routes
 func (s *Server) SetupRoutes() {
-	// API версионирование
+	// API versioning
 	apiV1 := s.router.PathPrefix("/api/v1").Subrouter()
 
 	// Health check endpoint
 	s.router.HandleFunc("/health", s.healthCheckHandler).Methods("GET")
 	s.router.HandleFunc("/ready", s.readinessHandler).Methods("GET")
 
-	// Broker endpoints (заглушки для будущей реализации)
-	// TODO: Реализовать BrokerService и подключить его
+	// Broker endpoints (stubs for future implementation)
+	// TODO: Implement BrokerService and connect it
 	apiV1.HandleFunc("/brokers", s.notImplementedHandler).Methods("GET")
 	apiV1.HandleFunc("/brokers/{id}", s.notImplementedHandler).Methods("GET")
 	apiV1.HandleFunc("/brokers/{id}/status", s.notImplementedHandler).Methods("GET")
@@ -144,7 +144,7 @@ func (s *Server) SetupRoutes() {
 		apiV1.HandleFunc("/subscriptions/{id}", s.notImplementedHandler).Methods("DELETE")
 	}
 
-	// Data endpoints (заглушки для будущей реализации)
+	// Data endpoints (stubs for future implementation)
 	apiV1.HandleFunc("/data/tickers", s.notImplementedHandler).Methods("GET")
 	apiV1.HandleFunc("/data/candles", s.notImplementedHandler).Methods("GET")
 	apiV1.HandleFunc("/data/orderbooks", s.notImplementedHandler).Methods("GET")
@@ -155,7 +155,7 @@ func (s *Server) SetupRoutes() {
 	s.logger.Info("Routes configured successfully")
 }
 
-// Start запускает сервер
+// Start starts the server
 func (s *Server) Start() error {
 	s.logger.WithFields(map[string]interface{}{
 		"address": s.httpServer.Addr,
@@ -169,29 +169,29 @@ func (s *Server) Start() error {
 	return nil
 }
 
-// Stop останавливает сервер
+// Stop stops the server
 func (s *Server) Stop(ctx context.Context) error {
 	s.logger.Info("Stopping HTTP server")
 
 	return s.httpServer.Shutdown(ctx)
 }
 
-// healthCheckHandler обрабатывает запросы проверки здоровья
+// healthCheckHandler handles health check requests
 func (s *Server) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"ok","service":"m-data-storage"}`))
 }
 
-// readinessHandler обрабатывает запросы готовности
+// readinessHandler handles readiness requests
 func (s *Server) readinessHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO: Добавить проверки готовности (БД, брокеры и т.д.)
+	// TODO: Add readiness checks (DB, brokers, etc.)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"status":"ready","service":"m-data-storage"}`))
 }
 
-// notImplementedHandler возвращает ошибку "не реализовано"
+// notImplementedHandler returns "not implemented" error
 func (s *Server) notImplementedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNotImplemented)

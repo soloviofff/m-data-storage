@@ -10,7 +10,7 @@ import (
 	"m-data-storage/pkg/broker"
 )
 
-// mockRepository - мок репозитория для тестирования
+// mockRepository - mock repository for testing
 type mockRepository struct {
 	systemConfig  *dto.SystemConfig
 	brokerConfigs map[string]broker.BrokerConfig

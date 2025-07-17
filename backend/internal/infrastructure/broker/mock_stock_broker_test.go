@@ -59,12 +59,12 @@ func TestMockStockBroker_GetMarkets(t *testing.T) {
 	logger := logrus.New()
 	broker := NewMockStockBroker(config, logger)
 
-	// Тестируем получение фондовых рынков
+	// Test stock markets retrieval
 	stockMarkets, err := broker.GetStockMarkets()
 	require.NoError(t, err)
 	assert.NotEmpty(t, stockMarkets)
 
-	// Проверяем, что есть популярные акции
+	// Check that popular stocks exist
 	symbols := make(map[string]bool)
 	for _, market := range stockMarkets {
 		symbols[market.Symbol] = true
@@ -73,12 +73,12 @@ func TestMockStockBroker_GetMarkets(t *testing.T) {
 	assert.True(t, symbols["MSFT"])
 	assert.True(t, symbols["GOOGL"])
 
-	// Тестируем получение секторов
+	// Test sectors retrieval
 	sectors, err := broker.GetSectors()
 	require.NoError(t, err)
 	assert.NotEmpty(t, sectors)
 
-	// Проверяем, что есть основные секторы
+	// Check that main sectors exist
 	sectorCodes := make(map[string]bool)
 	for _, sector := range sectors {
 		sectorCodes[sector.Code] = true
@@ -103,7 +103,7 @@ func TestMockStockBroker_GetCompanyInfo(t *testing.T) {
 	logger := logrus.New()
 	broker := NewMockStockBroker(config, logger)
 
-	// Тестируем получение информации о компании
+	// Test company information retrieval
 	companyInfo, err := broker.GetCompanyInfo("AAPL")
 	require.NoError(t, err)
 	assert.NotNil(t, companyInfo)
@@ -112,7 +112,7 @@ func TestMockStockBroker_GetCompanyInfo(t *testing.T) {
 	assert.Equal(t, "NASDAQ", companyInfo.Exchange)
 	assert.Greater(t, companyInfo.MarketCap, 0.0)
 
-	// Тестируем несуществующий символ
+	// Test non-existent symbol
 	_, err = broker.GetCompanyInfo("NONEXISTENT")
 	assert.Error(t, err)
 }
@@ -134,11 +134,11 @@ func TestMockStockBroker_Subscriptions(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Тестируем подписку на акции
+	// Test stocks subscription
 	err := broker.SubscribeStocks(ctx, []string{"AAPL", "MSFT", "GOOGL"})
 	assert.NoError(t, err)
 
-	// Проверяем, что подписки созданы
+	// Check that subscriptions are created
 	subscriptions := broker.GetSubscriptions()
 	assert.Len(t, subscriptions, 3)
 }
@@ -158,7 +158,7 @@ func TestMockStockBroker_DataChannels(t *testing.T) {
 	logger := logrus.New()
 	broker := NewMockStockBroker(config, logger)
 
-	// Проверяем, что каналы доступны
+	// Check that channels are available
 	tickerChan := broker.GetTickerChannel()
 	assert.NotNil(t, tickerChan)
 
@@ -196,18 +196,18 @@ func TestMockStockBroker_DataGeneration(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	// Запускаем брокер
+	// Start broker
 	err := broker.Start(ctx)
 	require.NoError(t, err)
 
-	// Подписываемся на данные
+	// Subscribe to data
 	err = broker.SubscribeStocks(ctx, []string{"AAPL", "MSFT"})
 	require.NoError(t, err)
 
-	// Ждем генерации данных
+	// Wait for data generation
 	time.Sleep(1 * time.Second)
 
-	// Проверяем, что данные генерируются
+	// Check that data is being generated
 	tickerChan := broker.GetTickerChannel()
 	candleChan := broker.GetCandleChannel()
 	orderBookChan := broker.GetOrderBookChannel()
@@ -215,7 +215,7 @@ func TestMockStockBroker_DataGeneration(t *testing.T) {
 	corporateActionChan := broker.GetCorporateActionChannel()
 	earningsChan := broker.GetEarningsChannel()
 
-	// Должны получить хотя бы некоторые данные
+	// Should receive at least some data
 	receivedTickers := 0
 	receivedCandles := 0
 	receivedOrderBooks := 0
@@ -265,10 +265,10 @@ func TestMockStockBroker_DataGeneration(t *testing.T) {
 	}
 
 checkResults:
-	// Проверяем, что получили данные
+	// Check that we received data
 	assert.Greater(t, receivedTickers, 0, "Should receive ticker data")
 
-	// Останавливаем брокер
+	// Stop broker
 	err = broker.Stop()
 	assert.NoError(t, err)
 }
@@ -288,20 +288,20 @@ func TestMockStockBroker_TradingHours(t *testing.T) {
 	logger := logrus.New()
 	broker := NewMockStockBroker(config, logger)
 
-	// Тестируем проверку торговых часов
-	// Понедельник 10:00 - торговые часы
-	tradingTime := time.Date(2024, 1, 8, 10, 0, 0, 0, time.UTC) // Понедельник
+	// Test trading hours check
+	// Monday 10:00 - trading hours
+	tradingTime := time.Date(2024, 1, 8, 10, 0, 0, 0, time.UTC) // Monday
 	assert.True(t, broker.isTradingHours(tradingTime))
 
-	// Суббота - не торговые часы
-	weekendTime := time.Date(2024, 1, 6, 10, 0, 0, 0, time.UTC) // Суббота
+	// Saturday - not trading hours
+	weekendTime := time.Date(2024, 1, 6, 10, 0, 0, 0, time.UTC) // Saturday
 	assert.False(t, broker.isTradingHours(weekendTime))
 
-	// Понедельник 8:00 - до открытия рынка
+	// Monday 8:00 - before market open
 	earlyTime := time.Date(2024, 1, 8, 8, 0, 0, 0, time.UTC)
 	assert.False(t, broker.isTradingHours(earlyTime))
 
-	// Понедельник 17:00 - после закрытия рынка
+	// Monday 17:00 - after market close
 	lateTime := time.Date(2024, 1, 8, 17, 0, 0, 0, time.UTC)
 	assert.False(t, broker.isTradingHours(lateTime))
 }
@@ -324,7 +324,7 @@ func TestMockStockBroker_SupportedInstruments(t *testing.T) {
 	instruments := broker.GetSupportedInstruments()
 	assert.NotEmpty(t, instruments)
 
-	// Проверяем, что все инструменты - акции
+	// Check that all instruments are stocks
 	for _, instrument := range instruments {
 		assert.Equal(t, entities.MarketTypeStock, instrument.Market)
 		assert.Equal(t, entities.InstrumentTypeStock, instrument.Type)

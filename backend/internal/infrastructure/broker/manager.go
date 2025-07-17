@@ -10,7 +10,7 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// Manager реализует интерфейс BrokerManager
+// Manager implements BrokerManager interface
 type Manager struct {
 	brokers map[string]interfaces.Broker
 	factory interfaces.BrokerFactory
@@ -18,7 +18,7 @@ type Manager struct {
 	mu      sync.RWMutex
 }
 
-// NewManager создает новый менеджер брокеров
+// NewManager creates a new broker manager
 func NewManager(factory interfaces.BrokerFactory, logger *logrus.Logger) *Manager {
 	if logger == nil {
 		logger = logrus.New()
@@ -31,13 +31,13 @@ func NewManager(factory interfaces.BrokerFactory, logger *logrus.Logger) *Manage
 	}
 }
 
-// Initialize инициализирует менеджер брокеров
+// Initialize initializes the broker manager
 func (m *Manager) Initialize(ctx context.Context) error {
 	m.logger.Info("Initializing broker manager")
 	return nil
 }
 
-// AddBroker добавляет брокер в менеджер
+// AddBroker adds a broker to the manager
 func (m *Manager) AddBroker(ctx context.Context, config interfaces.BrokerConfig) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -62,7 +62,7 @@ func (m *Manager) AddBroker(ctx context.Context, config interfaces.BrokerConfig)
 	return nil
 }
 
-// RemoveBroker удаляет брокер из менеджера
+// RemoveBroker removes a broker from the manager
 func (m *Manager) RemoveBroker(ctx context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -72,7 +72,7 @@ func (m *Manager) RemoveBroker(ctx context.Context, id string) error {
 		return fmt.Errorf("broker with ID %s not found", id)
 	}
 
-	// Останавливаем брокер перед удалением
+	// Stop broker before removal
 	if err := broker.Stop(); err != nil {
 		m.logger.WithField("broker_id", id).WithError(err).Warn("Error stopping broker")
 	}
@@ -83,7 +83,7 @@ func (m *Manager) RemoveBroker(ctx context.Context, id string) error {
 	return nil
 }
 
-// GetBroker возвращает брокер по ID
+// GetBroker returns a broker by ID
 func (m *Manager) GetBroker(id string) (interfaces.Broker, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -96,7 +96,7 @@ func (m *Manager) GetBroker(id string) (interfaces.Broker, error) {
 	return broker, nil
 }
 
-// GetAllBrokers возвращает все брокеры
+// GetAllBrokers returns all brokers
 func (m *Manager) GetAllBrokers() map[string]interfaces.Broker {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -109,7 +109,7 @@ func (m *Manager) GetAllBrokers() map[string]interfaces.Broker {
 	return result
 }
 
-// StartAll запускает все брокеры
+// StartAll starts all brokers
 func (m *Manager) StartAll(ctx context.Context) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -133,7 +133,7 @@ func (m *Manager) StartAll(ctx context.Context) error {
 	return nil
 }
 
-// StopAll останавливает все брокеры
+// StopAll stops all brokers
 func (m *Manager) StopAll() error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -157,7 +157,7 @@ func (m *Manager) StopAll() error {
 	return nil
 }
 
-// Health проверяет здоровье всех брокеров
+// Health checks health of all brokers
 func (m *Manager) Health() map[string]error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -171,12 +171,12 @@ func (m *Manager) Health() map[string]error {
 	return health
 }
 
-// HealthCheck проверяет здоровье всех брокеров (deprecated: use Health() instead)
+// HealthCheck checks health of all brokers (deprecated: use Health() instead)
 func (m *Manager) HealthCheck() map[string]error {
 	return m.Health()
 }
 
-// ListBrokers возвращает список информации о брокерах
+// ListBrokers returns list of broker information
 func (m *Manager) ListBrokers() []interfaces.BrokerInfo {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -189,14 +189,14 @@ func (m *Manager) ListBrokers() []interfaces.BrokerInfo {
 	return brokers
 }
 
-// GetBrokerCount возвращает количество брокеров
+// GetBrokerCount returns the number of brokers
 func (m *Manager) GetBrokerCount() int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return len(m.brokers)
 }
 
-// GetConnectedBrokers возвращает список подключенных брокеров
+// GetConnectedBrokers returns list of connected brokers
 func (m *Manager) GetConnectedBrokers() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -211,7 +211,7 @@ func (m *Manager) GetConnectedBrokers() []string {
 	return connected
 }
 
-// GetBrokerInfo возвращает информацию о всех брокерах
+// GetBrokerInfo returns information about all brokers
 func (m *Manager) GetBrokerInfo() map[string]interfaces.BrokerInfo {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -224,7 +224,7 @@ func (m *Manager) GetBrokerInfo() map[string]interfaces.BrokerInfo {
 	return info
 }
 
-// Shutdown корректно завершает работу менеджера
+// Shutdown gracefully shuts down the manager
 func (m *Manager) Shutdown() error {
 	m.logger.Info("Shutting down broker manager")
 

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// SpotMarket - спот рынок
+// SpotMarket - spot market
 type SpotMarket struct {
 	Symbol      string  `json:"symbol"`
 	BaseAsset   string  `json:"base_asset"`
@@ -20,7 +20,7 @@ type SpotMarket struct {
 	MinNotional float64 `json:"min_notional"`
 }
 
-// FuturesMarket - фьючерс рынок
+// FuturesMarket - futures market
 type FuturesMarket struct {
 	Symbol                string    `json:"symbol"`
 	BaseAsset             string    `json:"base_asset"`
@@ -38,7 +38,7 @@ type FuturesMarket struct {
 	SettlePlan            int       `json:"settle_plan"`
 }
 
-// ContractInfo - информация о контракте
+// ContractInfo - contract information
 type ContractInfo struct {
 	Symbol                string   `json:"symbol"`
 	Status                string   `json:"status"`
@@ -52,7 +52,7 @@ type ContractInfo struct {
 	SettlePlan            int      `json:"settle_plan"`
 }
 
-// FundingRate - ставка финансирования
+// FundingRate - funding rate
 type FundingRate struct {
 	Symbol    string    `json:"symbol"`
 	Rate      float64   `json:"rate"`
@@ -61,7 +61,7 @@ type FundingRate struct {
 	BrokerID  string    `json:"broker_id"`
 }
 
-// MarkPrice - маркировочная цена
+// MarkPrice - mark price
 type MarkPrice struct {
 	Symbol     string    `json:"symbol"`
 	Price      float64   `json:"price"`
@@ -70,7 +70,7 @@ type MarkPrice struct {
 	BrokerID   string    `json:"broker_id"`
 }
 
-// Liquidation - ликвидация
+// Liquidation - liquidation
 type Liquidation struct {
 	Symbol    string    `json:"symbol"`
 	Side      string    `json:"side"`
@@ -80,28 +80,28 @@ type Liquidation struct {
 	BrokerID  string    `json:"broker_id"`
 }
 
-// CryptoBroker - интерфейс для криптобирж
+// CryptoBroker - interface for crypto exchanges
 type CryptoBroker interface {
 	Broker
 
-	// Специфичные методы для криптобирж
+	// Specific methods for crypto exchanges
 	GetSpotMarkets() ([]SpotMarket, error)
 	GetFuturesMarkets() ([]FuturesMarket, error)
 
-	// Подписка на разные типы рынков
+	// Subscription to different market types
 	SubscribeSpot(ctx context.Context, symbols []string) error
 	SubscribeFutures(ctx context.Context, symbols []string) error
 
-	// Получение информации о контрактах
+	// Contract information retrieval
 	GetContractInfo(symbol string) (*ContractInfo, error)
 
-	// Специфичные каналы для криптобирж
+	// Specific channels for crypto exchanges
 	GetFundingRateChannel() <-chan FundingRate
 	GetMarkPriceChannel() <-chan MarkPrice
 	GetLiquidationChannel() <-chan Liquidation
 }
 
-// CryptoBrokerFactory - фабрика для криптобирж
+// CryptoBrokerFactory - factory for crypto exchanges
 type CryptoBrokerFactory interface {
 	Create(config BrokerConfig) (CryptoBroker, error)
 	GetSupportedExchanges() []string

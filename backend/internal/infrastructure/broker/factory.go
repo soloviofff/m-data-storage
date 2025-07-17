@@ -8,12 +8,12 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// Factory реализует интерфейс BrokerFactory
+// Factory implements BrokerFactory interface
 type Factory struct {
 	logger *logrus.Logger
 }
 
-// NewFactory создает новую фабрику брокеров
+// NewFactory creates a new broker factory
 func NewFactory(logger *logrus.Logger) *Factory {
 	if logger == nil {
 		logger = logrus.New()
@@ -24,7 +24,7 @@ func NewFactory(logger *logrus.Logger) *Factory {
 	}
 }
 
-// CreateBroker создает брокер на основе конфигурации
+// CreateBroker creates a broker based on configuration
 func (f *Factory) CreateBroker(config interfaces.BrokerConfig) (interfaces.Broker, error) {
 	if !config.Enabled {
 		return nil, fmt.Errorf("broker %s is disabled", config.ID)
@@ -40,7 +40,7 @@ func (f *Factory) CreateBroker(config interfaces.BrokerConfig) (interfaces.Broke
 	}
 }
 
-// GetSupportedTypes возвращает поддерживаемые типы брокеров
+// GetSupportedTypes returns supported broker types
 func (f *Factory) GetSupportedTypes() []interfaces.BrokerType {
 	return []interfaces.BrokerType{
 		interfaces.BrokerTypeCrypto,
@@ -48,7 +48,7 @@ func (f *Factory) GetSupportedTypes() []interfaces.BrokerType {
 	}
 }
 
-// createCryptoBroker создает криптоброкер
+// createCryptoBroker creates a crypto broker
 func (f *Factory) createCryptoBroker(config interfaces.BrokerConfig) (interfaces.Broker, error) {
 	f.logger.WithFields(logrus.Fields{
 		"broker_id":   config.ID,
@@ -56,17 +56,17 @@ func (f *Factory) createCryptoBroker(config interfaces.BrokerConfig) (interfaces
 		"broker_type": config.Type,
 	}).Info("Creating crypto broker")
 
-	// Проверяем, является ли это тестовым брокером
+	// Check if this is a test broker
 	if config.Name == "mock" || config.Name == "test" {
 		return NewMockCryptoBroker(config, f.logger), nil
 	}
 
-	// В будущем здесь будет создание конкретных реализаций (Binance, Coinbase, etc.)
-	// Пока возвращаем mock брокер для всех случаев
+	// In the future, specific implementations will be created here (Binance, Coinbase, etc.)
+	// For now, return mock broker for all cases
 	return NewMockCryptoBroker(config, f.logger), nil
 }
 
-// createStockBroker создает фондовый брокер
+// createStockBroker creates a stock broker
 func (f *Factory) createStockBroker(config interfaces.BrokerConfig) (interfaces.Broker, error) {
 	f.logger.WithFields(logrus.Fields{
 		"broker_id":   config.ID,
@@ -74,17 +74,17 @@ func (f *Factory) createStockBroker(config interfaces.BrokerConfig) (interfaces.
 		"broker_type": config.Type,
 	}).Info("Creating stock broker")
 
-	// Проверяем, является ли это тестовым брокером
+	// Check if this is a test broker
 	if config.Name == "mock" || config.Name == "test" {
 		return NewMockStockBroker(config, f.logger), nil
 	}
 
-	// В будущем здесь будет создание конкретных реализаций (IEX, Alpha Vantage, etc.)
-	// Пока возвращаем mock брокер для всех случаев
+	// In the future, specific implementations will be created here (IEX, Alpha Vantage, etc.)
+	// For now, return mock broker for all cases
 	return NewMockStockBroker(config, f.logger), nil
 }
 
-// ValidateConfig проверяет корректность конфигурации брокера
+// ValidateConfig validates broker configuration
 func (f *Factory) ValidateConfig(config interfaces.BrokerConfig) error {
 	if config.ID == "" {
 		return fmt.Errorf("broker ID cannot be empty")
@@ -98,7 +98,7 @@ func (f *Factory) ValidateConfig(config interfaces.BrokerConfig) error {
 		return fmt.Errorf("broker type cannot be empty")
 	}
 
-	// Проверяем, что тип поддерживается
+	// Check that type is supported
 	supportedTypes := f.GetSupportedTypes()
 	supported := false
 	for _, supportedType := range supportedTypes {
@@ -112,12 +112,12 @@ func (f *Factory) ValidateConfig(config interfaces.BrokerConfig) error {
 		return fmt.Errorf("unsupported broker type: %s", config.Type)
 	}
 
-	// Проверяем конфигурацию соединения
+	// Check connection configuration
 	if config.Connection.WebSocketURL == "" && config.Connection.RestAPIURL == "" {
 		return fmt.Errorf("at least one connection URL must be specified")
 	}
 
-	// Проверяем лимиты
+	// Check limits
 	if config.Limits.MaxSubscriptions <= 0 {
 		return fmt.Errorf("max subscriptions must be positive")
 	}

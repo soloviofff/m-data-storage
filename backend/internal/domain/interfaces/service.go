@@ -7,50 +7,50 @@ import (
 	"m-data-storage/internal/domain/entities"
 )
 
-// DataProcessor - интерфейс для обработки данных
+// DataProcessor - interface for data processing
 type DataProcessor interface {
-	// Обработка входящих данных
+	// Incoming data processing
 	ProcessTicker(ctx context.Context, ticker entities.Ticker) error
 	ProcessCandle(ctx context.Context, candle entities.Candle) error
 	ProcessOrderBook(ctx context.Context, orderBook entities.OrderBook) error
 
-	// Пакетная обработка
+	// Batch processing
 	ProcessTickerBatch(ctx context.Context, tickers []entities.Ticker) error
 	ProcessCandleBatch(ctx context.Context, candles []entities.Candle) error
 	ProcessOrderBookBatch(ctx context.Context, orderBooks []entities.OrderBook) error
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	Start(ctx context.Context) error
 	Stop() error
 	Health() error
 }
 
-// InstrumentManager - интерфейс для управления инструментами
+// InstrumentManager - interface for instrument management
 type InstrumentManager interface {
-	// Управление подписками
+	// Subscription management
 	AddSubscription(ctx context.Context, subscription entities.InstrumentSubscription) error
 	RemoveSubscription(ctx context.Context, subscriptionID string) error
 	UpdateSubscription(ctx context.Context, subscription entities.InstrumentSubscription) error
 	GetSubscription(ctx context.Context, subscriptionID string) (*entities.InstrumentSubscription, error)
 	ListSubscriptions(ctx context.Context) ([]entities.InstrumentSubscription, error)
 
-	// Управление инструментами
+	// Instrument management
 	AddInstrument(ctx context.Context, instrument entities.InstrumentInfo) error
 	GetInstrument(ctx context.Context, symbol string) (*entities.InstrumentInfo, error)
 	ListInstruments(ctx context.Context) ([]entities.InstrumentInfo, error)
 
-	// Синхронизация с брокерами
+	// Broker synchronization
 	SyncWithBrokers(ctx context.Context) error
 	StartTracking(ctx context.Context, subscriptionID string) error
 	StopTracking(ctx context.Context, subscriptionID string) error
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	Start(ctx context.Context) error
 	Stop() error
 	Health() error
 }
 
-// DataValidator - интерфейс для валидации данных
+// DataValidator - interface for data validation
 type DataValidator interface {
 	ValidateTicker(ticker entities.Ticker) error
 	ValidateCandle(candle entities.Candle) error
@@ -62,32 +62,32 @@ type DataValidator interface {
 	ValidateSubscription(subscription entities.InstrumentSubscription) error
 }
 
-// StorageService - интерфейс для высокоуровневых операций с хранилищем
+// StorageService - interface for high-level storage operations
 type StorageService interface {
-	// Сохранение отдельных записей с пакетной обработкой
+	// Individual record saving with batch processing
 	SaveTicker(ctx context.Context, ticker entities.Ticker) error
 	SaveCandle(ctx context.Context, candle entities.Candle) error
 	SaveOrderBook(ctx context.Context, orderBook entities.OrderBook) error
 
-	// Сохранение множественных записей
+	// Multiple record saving
 	SaveTickers(ctx context.Context, tickers []entities.Ticker) error
 	SaveCandles(ctx context.Context, candles []entities.Candle) error
 	SaveOrderBooks(ctx context.Context, orderBooks []entities.OrderBook) error
 
-	// Получение данных
+	// Data retrieval
 	GetTickers(ctx context.Context, filter TickerFilter) ([]entities.Ticker, error)
 	GetCandles(ctx context.Context, filter CandleFilter) ([]entities.Candle, error)
 	GetOrderBooks(ctx context.Context, filter OrderBookFilter) ([]entities.OrderBook, error)
 
-	// Управление буферами
+	// Buffer management
 	FlushAll(ctx context.Context) error
 	GetStats() StorageServiceStats
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	Close(ctx context.Context) error
 }
 
-// StorageServiceStats - статистика работы сервиса хранения
+// StorageServiceStats - storage service statistics
 type StorageServiceStats struct {
 	TickersSaved    int64     `json:"tickers_saved"`
 	CandlesSaved    int64     `json:"candles_saved"`
@@ -97,43 +97,43 @@ type StorageServiceStats struct {
 	LastFlushTime   time.Time `json:"last_flush_time"`
 }
 
-// DataCollector - интерфейс для сбора данных
+// DataCollector - interface for data collection
 type DataCollector interface {
-	// Запуск сбора данных
+	// Data collection startup
 	StartCollection(ctx context.Context) error
 	StopCollection() error
 
-	// Управление подписками
+	// Subscription management
 	Subscribe(ctx context.Context, brokerID string, subscription entities.InstrumentSubscription) error
 	Unsubscribe(ctx context.Context, brokerID string, subscriptionID string) error
 
-	// Получение каналов данных
+	// Data channel access
 	GetTickerChannel() <-chan entities.Ticker
 	GetCandleChannel() <-chan entities.Candle
 	GetOrderBookChannel() <-chan entities.OrderBook
 
-	// Статистика
+	// Statistics
 	GetCollectionStats() CollectionStats
 	Health() error
 }
 
-// BrokerStorageIntegration - интерфейс для интеграции брокеров с хранилищем
+// BrokerStorageIntegration - interface for broker-storage integration
 type BrokerStorageIntegration interface {
-	// Управление жизненным циклом
+	// Lifecycle management
 	Start(ctx context.Context) error
 	Stop() error
 
-	// Управление брокерами
+	// Broker management
 	AddBroker(brokerID string, broker Broker) error
 	RemoveBroker(brokerID string) error
 
-	// Статистика и мониторинг
+	// Statistics and monitoring
 	GetStats() BrokerStorageIntegrationStats
 	GetBrokerStats(brokerID string) (BrokerIntegrationStats, error)
 	Health() error
 }
 
-// BrokerStorageIntegrationStats - статистика интеграции брокеров с хранилищем
+// BrokerStorageIntegrationStats - broker-storage integration statistics
 type BrokerStorageIntegrationStats struct {
 	ActiveBrokers    int       `json:"active_brokers"`
 	TotalTickers     int64     `json:"total_tickers"`
@@ -144,7 +144,7 @@ type BrokerStorageIntegrationStats struct {
 	StartedAt        time.Time `json:"started_at"`
 }
 
-// BrokerIntegrationStats - статистика интеграции по брокеру
+// BrokerIntegrationStats - broker integration statistics
 type BrokerIntegrationStats struct {
 	BrokerID            string    `json:"broker_id"`
 	TickersProcessed    int64     `json:"tickers_processed"`
@@ -155,27 +155,27 @@ type BrokerIntegrationStats struct {
 	StartedAt           time.Time `json:"started_at"`
 }
 
-// DataPipeline - интерфейс для управления потоками данных
+// DataPipeline - interface for data flow management
 type DataPipeline interface {
-	// Управление жизненным циклом
+	// Lifecycle management
 	Start(ctx context.Context) error
 	Stop() error
 
-	// Управление брокерами
+	// Broker management
 	AddBroker(ctx context.Context, config BrokerConfig) error
 	RemoveBroker(ctx context.Context, brokerID string) error
 
-	// Управление подписками
+	// Subscription management
 	Subscribe(ctx context.Context, brokerID string, subscriptions []entities.InstrumentSubscription) error
 	Unsubscribe(ctx context.Context, brokerID string, subscriptions []entities.InstrumentSubscription) error
 
-	// Статистика и мониторинг
+	// Statistics and monitoring
 	GetStats() DataPipelineStats
 	GetIntegrationStats() BrokerStorageIntegrationStats
 	Health() error
 }
 
-// DataPipelineStats - статистика пайплайна данных
+// DataPipelineStats - data pipeline statistics
 type DataPipelineStats struct {
 	StartedAt          time.Time `json:"started_at"`
 	ConnectedBrokers   int       `json:"connected_brokers"`
@@ -186,64 +186,64 @@ type DataPipelineStats struct {
 	HealthChecksFailed int64     `json:"health_checks_failed"`
 }
 
-// DataQuery - интерфейс для запросов данных
+// DataQuery - interface for data queries
 type DataQuery interface {
-	// Получение данных
+	// Data retrieval
 	GetTickers(ctx context.Context, filter TickerFilter) ([]entities.Ticker, error)
 	GetCandles(ctx context.Context, filter CandleFilter) ([]entities.Candle, error)
 	GetOrderBooks(ctx context.Context, filter OrderBookFilter) ([]entities.OrderBook, error)
 
-	// Агрегированные данные
+	// Aggregated data
 	GetTickerAggregates(ctx context.Context, symbol string, interval string, startTime, endTime time.Time) ([]TickerAggregate, error)
 	GetCandleAggregates(ctx context.Context, symbol string, interval string, startTime, endTime time.Time) ([]CandleAggregate, error)
 
-	// Статистика
+	// Statistics
 	GetDataStats(ctx context.Context) (DataStats, error)
 }
 
-// ConfigService - интерфейс для управления конфигурацией
+// ConfigService - interface for configuration management
 type ConfigService interface {
-	// Конфигурация брокеров
+	// Broker configuration
 	GetBrokerConfig(ctx context.Context, brokerID string) (*BrokerConfig, error)
 	SetBrokerConfig(ctx context.Context, config BrokerConfig) error
 	ListBrokerConfigs(ctx context.Context) ([]BrokerConfig, error)
 	DeleteBrokerConfig(ctx context.Context, brokerID string) error
 
-	// Системная конфигурация
+	// System configuration
 	GetSystemConfig(ctx context.Context) (*SystemConfig, error)
 	UpdateSystemConfig(ctx context.Context, config SystemConfig) error
 
-	// Валидация конфигурации
+	// Configuration validation
 	ValidateBrokerConfig(config BrokerConfig) error
 	ValidateSystemConfig(config SystemConfig) error
 }
 
-// SystemConfig - системная конфигурация
+// SystemConfig - system configuration
 type SystemConfig struct {
-	// Настройки хранения
+	// Storage settings
 	StorageRetention time.Duration `json:"storage_retention"`
 	VacuumInterval   time.Duration `json:"vacuum_interval"`
 	MaxStorageSize   int64         `json:"max_storage_size"`
 
-	// Настройки API
+	// API settings
 	APIPort         int           `json:"api_port"`
 	APIHost         string        `json:"api_host"`
 	ReadTimeout     time.Duration `json:"read_timeout"`
 	WriteTimeout    time.Duration `json:"write_timeout"`
 	ShutdownTimeout time.Duration `json:"shutdown_timeout"`
 
-	// Настройки безопасности
+	// Security settings
 	JWTSecret      string   `json:"jwt_secret"`
 	APIKeyHeader   string   `json:"api_key_header"`
 	AllowedOrigins []string `json:"allowed_origins"`
 
-	// Настройки мониторинга
+	// Monitoring settings
 	MetricsEnabled bool `json:"metrics_enabled"`
 	MetricsPort    int  `json:"metrics_port"`
 	TracingEnabled bool `json:"tracing_enabled"`
 }
 
-// CollectionStats - статистика сбора данных
+// CollectionStats - data collection statistics
 type CollectionStats struct {
 	TotalTickers        int64     `json:"total_tickers"`
 	TotalCandles        int64     `json:"total_candles"`
@@ -257,7 +257,7 @@ type CollectionStats struct {
 	Errors              int64     `json:"errors"`
 }
 
-// DataStats - статистика данных
+// DataStats - data statistics
 type DataStats struct {
 	TotalRecords    int64            `json:"total_records"`
 	RecordsByType   map[string]int64 `json:"records_by_type"`

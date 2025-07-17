@@ -35,7 +35,7 @@ func TestServer_SetupMiddleware(t *testing.T) {
 	server := NewServer(cfg, c, log)
 	server.SetupMiddleware()
 
-	// Middleware настроен, проверим что роутер не nil
+	// Middleware configured, check that router is not nil
 	assert.NotNil(t, server.router)
 }
 
@@ -48,7 +48,7 @@ func TestServer_SetupRoutes(t *testing.T) {
 	server.SetupMiddleware()
 	server.SetupRoutes()
 
-	// Проверим что роуты настроены
+	// Check that routes are configured
 	assert.NotNil(t, server.router)
 }
 
@@ -129,8 +129,8 @@ func TestNotImplementedEndpoints(t *testing.T) {
 	}
 }
 
-// TestServer_StartStop тест запуска и остановки сервера
-// Пропускаем этот тест, так как он требует реального сетевого соединения
+// TestServer_StartStop test for server start and stop
+// Skip this test as it requires real network connection
 func TestServer_StartStop(t *testing.T) {
 	t.Skip("Skipping server start/stop test - requires network setup")
 }
@@ -144,7 +144,7 @@ func TestCORSHeaders(t *testing.T) {
 	server.SetupMiddleware()
 	server.SetupRoutes()
 
-	// Тестируем обычный GET запрос с Origin заголовком
+	// Test regular GET request with Origin header
 	req, err := http.NewRequest("GET", "/health", nil)
 	require.NoError(t, err)
 	req.Header.Set("Origin", "http://localhost:3000")
@@ -153,7 +153,7 @@ func TestCORSHeaders(t *testing.T) {
 	server.router.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-	// CORS middleware должен добавить заголовки
+	// CORS middleware should add headers
 	assert.NotEmpty(t, rr.Header().Get("Access-Control-Allow-Origin"))
 }
 

@@ -21,7 +21,7 @@ func TestCryptoDataGenerator_GenerateTicker(t *testing.T) {
 	generator := NewCryptoDataGenerator(spotMarkets, futuresMarkets)
 	now := time.Now()
 
-	// Тестируем генерацию тикера для спота
+	// Test ticker generation for spot
 	ticker := generator.GenerateTicker("BTCUSDT", entities.MarketTypeSpot, now)
 	assert.NotNil(t, ticker)
 	assert.Equal(t, "BTCUSDT", ticker.Symbol)
@@ -31,9 +31,9 @@ func TestCryptoDataGenerator_GenerateTicker(t *testing.T) {
 	assert.Greater(t, ticker.Volume, 0.0)
 	assert.NotZero(t, ticker.BidPrice)
 	assert.NotZero(t, ticker.AskPrice)
-	assert.Greater(t, ticker.AskPrice, ticker.BidPrice) // Ask должен быть выше Bid
+	assert.Greater(t, ticker.AskPrice, ticker.BidPrice) // Ask should be higher than Bid
 
-	// Тестируем генерацию тикера для фьючерсов
+	// Test ticker generation for futures
 	futuresTicker := generator.GenerateTicker("ETHUSDT", entities.MarketTypeFutures, now)
 	assert.NotNil(t, futuresTicker)
 	assert.Equal(t, "ETHUSDT", futuresTicker.Symbol)
@@ -62,8 +62,8 @@ func TestCryptoDataGenerator_GenerateCandle(t *testing.T) {
 	assert.Greater(t, candle.Close, 0.0)
 	assert.Greater(t, candle.Volume, 0.0)
 	assert.Equal(t, "1m", candle.Timeframe)
-	
-	// Проверяем логику OHLC
+
+	// Check OHLC logic
 	assert.GreaterOrEqual(t, candle.High, candle.Open)
 	assert.GreaterOrEqual(t, candle.High, candle.Close)
 	assert.LessOrEqual(t, candle.Low, candle.Open)
@@ -86,18 +86,18 @@ func TestCryptoDataGenerator_GenerateOrderBook(t *testing.T) {
 	assert.Equal(t, entities.InstrumentTypeSpot, orderBook.Type)
 	assert.Len(t, orderBook.Bids, 20)
 	assert.Len(t, orderBook.Asks, 20)
-	
-	// Проверяем, что bid цены убывают
+
+	// Check that bid prices are decreasing
 	for i := 1; i < len(orderBook.Bids); i++ {
 		assert.Greater(t, orderBook.Bids[i-1].Price, orderBook.Bids[i].Price)
 	}
-	
-	// Проверяем, что ask цены возрастают
+
+	// Check that ask prices are increasing
 	for i := 1; i < len(orderBook.Asks); i++ {
 		assert.Greater(t, orderBook.Asks[i].Price, orderBook.Asks[i-1].Price)
 	}
-	
-	// Проверяем, что лучший ask выше лучшего bid
+
+	// Check that best ask is higher than best bid
 	if len(orderBook.Bids) > 0 && len(orderBook.Asks) > 0 {
 		assert.Greater(t, orderBook.Asks[0].Price, orderBook.Bids[0].Price)
 	}
@@ -170,8 +170,8 @@ func TestStockDataGenerator_GenerateTicker(t *testing.T) {
 	assert.Greater(t, ticker.BidPrice, 0.0)
 	assert.Greater(t, ticker.AskPrice, 0.0)
 	assert.Greater(t, ticker.AskPrice, ticker.BidPrice)
-	
-	// Проверяем, что спред разумный (меньше 1%)
+
+	// Check that spread is reasonable (less than 1%)
 	spread := (ticker.AskPrice - ticker.BidPrice) / ticker.Price
 	assert.Less(t, spread, 0.01)
 }
@@ -195,8 +195,8 @@ func TestStockDataGenerator_GenerateCandle(t *testing.T) {
 	assert.Greater(t, candle.Low, 0.0)
 	assert.Greater(t, candle.Close, 0.0)
 	assert.Greater(t, candle.Volume, 0.0)
-	
-	// Проверяем логику OHLC
+
+	// Check OHLC logic
 	assert.GreaterOrEqual(t, candle.High, candle.Open)
 	assert.GreaterOrEqual(t, candle.High, candle.Close)
 	assert.LessOrEqual(t, candle.Low, candle.Open)
@@ -268,15 +268,15 @@ func TestDataGenerator_PriceConsistency(t *testing.T) {
 	generator := NewCryptoDataGenerator(spotMarkets, futuresMarkets)
 	now := time.Now()
 
-	// Генерируем несколько тикеров подряд
+	// Generate several tickers in sequence
 	ticker1 := generator.GenerateTicker("BTCUSDT", entities.MarketTypeSpot, now)
 	ticker2 := generator.GenerateTicker("BTCUSDT", entities.MarketTypeSpot, now.Add(time.Second))
 	ticker3 := generator.GenerateTicker("BTCUSDT", entities.MarketTypeSpot, now.Add(2*time.Second))
 
-	// Проверяем, что цены изменяются постепенно (не более 5% за раз)
+	// Check that prices change gradually (no more than 5% at a time)
 	change1 := abs(ticker2.Price-ticker1.Price) / ticker1.Price
 	change2 := abs(ticker3.Price-ticker2.Price) / ticker2.Price
-	
+
 	assert.Less(t, change1, 0.05, "Price change should be less than 5%")
 	assert.Less(t, change2, 0.05, "Price change should be less than 5%")
 }

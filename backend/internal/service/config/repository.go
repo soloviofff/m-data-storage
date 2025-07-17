@@ -12,7 +12,7 @@ import (
 	"m-data-storage/pkg/broker"
 )
 
-// Repository - интерфейс для работы с хранилищем конфигурации
+// Repository - interface for configuration storage operations
 type Repository interface {
 	GetSystemConfig(ctx context.Context) (dto.SystemConfig, error)
 	UpdateSystemConfig(ctx context.Context, config dto.SystemConfig) error
@@ -21,17 +21,17 @@ type Repository interface {
 	ListBrokerConfigs(ctx context.Context) ([]broker.BrokerConfig, error)
 }
 
-// repository - реализация интерфейса Repository
+// repository - implementation of Repository interface
 type repository struct {
 	db *sql.DB
 }
 
-// NewRepository - создает новый экземпляр репозитория
+// NewRepository - creates a new repository instance
 func NewRepository(db *sql.DB) Repository {
 	return &repository{db: db}
 }
 
-// GetSystemConfig - получает системную конфигурацию
+// GetSystemConfig - retrieves system configuration
 func (r *repository) GetSystemConfig(ctx context.Context) (dto.SystemConfig, error) {
 	query := `SELECT 
 		storage_retention, vacuum_interval, max_storage_size,
@@ -91,7 +91,7 @@ func (r *repository) GetSystemConfig(ctx context.Context) (dto.SystemConfig, err
 	return config, nil
 }
 
-// UpdateSystemConfig - обновляет системную конфигурацию
+// UpdateSystemConfig - updates system configuration
 func (r *repository) UpdateSystemConfig(ctx context.Context, cfg dto.SystemConfig) error {
 	// Convert durations to seconds for storage
 	storageRetention := int64(cfg.StorageRetention.Seconds())
@@ -137,7 +137,7 @@ func (r *repository) UpdateSystemConfig(ctx context.Context, cfg dto.SystemConfi
 	return nil
 }
 
-// GetBrokerConfig - получает конфигурацию брокера
+// GetBrokerConfig - retrieves broker configuration
 func (r *repository) GetBrokerConfig(ctx context.Context, brokerID string) (broker.BrokerConfig, error) {
 	query := `SELECT config_json FROM broker_config WHERE id = ?`
 
@@ -158,7 +158,7 @@ func (r *repository) GetBrokerConfig(ctx context.Context, brokerID string) (brok
 	return config, nil
 }
 
-// SetBrokerConfig - сохраняет конфигурацию брокера
+// SetBrokerConfig - saves broker configuration
 func (r *repository) SetBrokerConfig(ctx context.Context, cfg broker.BrokerConfig) error {
 	configJSON, err := json.Marshal(cfg)
 	if err != nil {
@@ -174,7 +174,7 @@ func (r *repository) SetBrokerConfig(ctx context.Context, cfg broker.BrokerConfi
 	return nil
 }
 
-// ListBrokerConfigs - получает список всех конфигураций брокеров
+// ListBrokerConfigs - retrieves list of all broker configurations
 func (r *repository) ListBrokerConfigs(ctx context.Context) ([]broker.BrokerConfig, error) {
 	query := `SELECT config_json FROM broker_config`
 

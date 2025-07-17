@@ -18,7 +18,7 @@ func TestNewFactory(t *testing.T) {
 
 func TestFactory_GetSupportedTypes(t *testing.T) {
 	factory := NewFactory(logrus.New())
-	
+
 	types := factory.GetSupportedTypes()
 	assert.Len(t, types, 2)
 	assert.Contains(t, types, interfaces.BrokerTypeCrypto)
@@ -27,7 +27,7 @@ func TestFactory_GetSupportedTypes(t *testing.T) {
 
 func TestFactory_CreateBroker_Crypto(t *testing.T) {
 	factory := NewFactory(logrus.New())
-	
+
 	config := interfaces.BrokerConfig{
 		ID:      "crypto-broker",
 		Name:    "Crypto Broker",
@@ -46,11 +46,11 @@ func TestFactory_CreateBroker_Crypto(t *testing.T) {
 			MaxSubscriptions: 50,
 		},
 	}
-	
+
 	broker, err := factory.CreateBroker(config)
 	require.NoError(t, err)
 	assert.NotNil(t, broker)
-	
+
 	info := broker.GetInfo()
 	assert.Equal(t, "crypto-broker", info.ID)
 	assert.Equal(t, "Crypto Broker", info.Name)
@@ -59,7 +59,7 @@ func TestFactory_CreateBroker_Crypto(t *testing.T) {
 
 func TestFactory_CreateBroker_Stock(t *testing.T) {
 	factory := NewFactory(logrus.New())
-	
+
 	config := interfaces.BrokerConfig{
 		ID:      "stock-broker",
 		Name:    "Stock Broker",
@@ -78,11 +78,11 @@ func TestFactory_CreateBroker_Stock(t *testing.T) {
 			MaxSubscriptions: 50,
 		},
 	}
-	
+
 	broker, err := factory.CreateBroker(config)
 	require.NoError(t, err)
 	assert.NotNil(t, broker)
-	
+
 	info := broker.GetInfo()
 	assert.Equal(t, "stock-broker", info.ID)
 	assert.Equal(t, "Stock Broker", info.Name)
@@ -91,12 +91,12 @@ func TestFactory_CreateBroker_Stock(t *testing.T) {
 
 func TestFactory_CreateBroker_Disabled(t *testing.T) {
 	factory := NewFactory(logrus.New())
-	
+
 	config := interfaces.BrokerConfig{
 		ID:      "disabled-broker",
 		Name:    "Disabled Broker",
 		Type:    interfaces.BrokerTypeCrypto,
-		Enabled: false, // Брокер отключен
+		Enabled: false, // Broker disabled
 		Connection: interfaces.ConnectionConfig{
 			WebSocketURL: "wss://test.com",
 		},
@@ -108,7 +108,7 @@ func TestFactory_CreateBroker_Disabled(t *testing.T) {
 			MaxSubscriptions: 50,
 		},
 	}
-	
+
 	broker, err := factory.CreateBroker(config)
 	assert.Error(t, err)
 	assert.Nil(t, broker)
@@ -117,11 +117,11 @@ func TestFactory_CreateBroker_Disabled(t *testing.T) {
 
 func TestFactory_CreateBroker_UnsupportedType(t *testing.T) {
 	factory := NewFactory(logrus.New())
-	
+
 	config := interfaces.BrokerConfig{
 		ID:      "unknown-broker",
 		Name:    "Unknown Broker",
-		Type:    "unknown", // Неподдерживаемый тип
+		Type:    "unknown", // Unsupported type
 		Enabled: true,
 		Connection: interfaces.ConnectionConfig{
 			WebSocketURL: "wss://test.com",
@@ -134,7 +134,7 @@ func TestFactory_CreateBroker_UnsupportedType(t *testing.T) {
 			MaxSubscriptions: 50,
 		},
 	}
-	
+
 	broker, err := factory.CreateBroker(config)
 	assert.Error(t, err)
 	assert.Nil(t, broker)
@@ -143,7 +143,7 @@ func TestFactory_CreateBroker_UnsupportedType(t *testing.T) {
 
 func TestFactory_ValidateConfig(t *testing.T) {
 	factory := NewFactory(logrus.New())
-	
+
 	tests := []struct {
 		name        string
 		config      interfaces.BrokerConfig
@@ -210,11 +210,11 @@ func TestFactory_ValidateConfig(t *testing.T) {
 		{
 			name: "no connection URLs",
 			config: interfaces.BrokerConfig{
-				ID:   "test-broker",
-				Name: "Test Broker",
-				Type: interfaces.BrokerTypeCrypto,
+				ID:         "test-broker",
+				Name:       "Test Broker",
+				Type:       interfaces.BrokerTypeCrypto,
 				Connection: interfaces.ConnectionConfig{
-					// Нет URL
+					// No URL
 				},
 				Defaults: interfaces.DefaultsConfig{
 					BufferSize: 100,
@@ -241,7 +241,7 @@ func TestFactory_ValidateConfig(t *testing.T) {
 					BatchSize:  10,
 				},
 				Limits: interfaces.LimitsConfig{
-					MaxSubscriptions: 0, // Неверное значение
+					MaxSubscriptions: 0, // Invalid value
 				},
 			},
 			expectError: true,
@@ -257,7 +257,7 @@ func TestFactory_ValidateConfig(t *testing.T) {
 					WebSocketURL: "wss://test.com",
 				},
 				Defaults: interfaces.DefaultsConfig{
-					BufferSize: 0, // Неверное значение
+					BufferSize: 0, // Invalid value
 					BatchSize:  10,
 				},
 				Limits: interfaces.LimitsConfig{
@@ -278,7 +278,7 @@ func TestFactory_ValidateConfig(t *testing.T) {
 				},
 				Defaults: interfaces.DefaultsConfig{
 					BufferSize: 100,
-					BatchSize:  0, // Неверное значение
+					BatchSize:  0, // Invalid value
 				},
 				Limits: interfaces.LimitsConfig{
 					MaxSubscriptions: 50,
@@ -288,11 +288,11 @@ func TestFactory_ValidateConfig(t *testing.T) {
 			errorText:   "batch size must be positive",
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := factory.ValidateConfig(tt.config)
-			
+
 			if tt.expectError {
 				assert.Error(t, err)
 				if tt.errorText != "" {

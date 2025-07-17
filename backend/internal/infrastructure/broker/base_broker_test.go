@@ -22,10 +22,10 @@ func TestNewBaseBroker(t *testing.T) {
 			BufferSize: 100,
 		},
 	}
-	
+
 	logger := logrus.New()
 	broker := NewBaseBroker(config, logger)
-	
+
 	assert.NotNil(t, broker)
 	assert.Equal(t, config.ID, broker.config.ID)
 	assert.Equal(t, config.Name, broker.config.Name)
@@ -45,19 +45,19 @@ func TestBaseBroker_Connect(t *testing.T) {
 			BufferSize: 100,
 		},
 	}
-	
+
 	broker := NewBaseBroker(config, logrus.New())
 	ctx := context.Background()
-	
-	// Проверяем начальное состояние
+
+	// Check initial state
 	assert.False(t, broker.IsConnected())
-	
-	// Подключаемся
+
+	// Connect
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 	assert.True(t, broker.IsConnected())
-	
-	// Повторное подключение должно быть безопасным
+
+	// Repeated connection should be safe
 	err = broker.Connect(ctx)
 	require.NoError(t, err)
 	assert.True(t, broker.IsConnected())
@@ -72,21 +72,21 @@ func TestBaseBroker_Disconnect(t *testing.T) {
 			BufferSize: 100,
 		},
 	}
-	
+
 	broker := NewBaseBroker(config, logrus.New())
 	ctx := context.Background()
-	
-	// Подключаемся
+
+	// Connect
 	err := broker.Connect(ctx)
 	require.NoError(t, err)
 	assert.True(t, broker.IsConnected())
-	
-	// Отключаемся
+
+	// Disconnect
 	err = broker.Disconnect()
 	require.NoError(t, err)
 	assert.False(t, broker.IsConnected())
-	
-	// Повторное отключение должно быть безопасным
+
+	// Repeated disconnection should be safe
 	err = broker.Disconnect()
 	require.NoError(t, err)
 	assert.False(t, broker.IsConnected())
@@ -101,19 +101,19 @@ func TestBaseBroker_GetInfo(t *testing.T) {
 			BufferSize: 100,
 		},
 	}
-	
+
 	broker := NewBaseBroker(config, logrus.New())
-	
+
 	info := broker.GetInfo()
 	assert.Equal(t, config.ID, info.ID)
 	assert.Equal(t, config.Name, info.Name)
 	assert.Equal(t, config.Type, info.Type)
 	assert.Equal(t, "disconnected", info.Status)
-	
-	// Подключаемся и проверяем статус
+
+	// Connect and check status
 	err := broker.Connect(context.Background())
 	require.NoError(t, err)
-	
+
 	info = broker.GetInfo()
 	assert.Equal(t, "connected", info.Status)
 }
@@ -127,10 +127,10 @@ func TestBaseBroker_Subscribe(t *testing.T) {
 			BufferSize: 100,
 		},
 	}
-	
+
 	broker := NewBaseBroker(config, logrus.New())
 	ctx := context.Background()
-	
+
 	subscriptions := []entities.InstrumentSubscription{
 		{
 			Symbol: "BTCUSDT",
@@ -143,14 +143,14 @@ func TestBaseBroker_Subscribe(t *testing.T) {
 			Market: entities.MarketTypeSpot,
 		},
 	}
-	
+
 	err := broker.Subscribe(ctx, subscriptions)
 	require.NoError(t, err)
-	
-	// Проверяем, что подписки добавлены
+
+	// Check that subscriptions are added
 	brokerSubscriptions := broker.GetSubscriptions()
 	assert.Len(t, brokerSubscriptions, 2)
-	
+
 	stats := broker.GetStats()
 	assert.Equal(t, 2, stats.ActiveSubscriptions)
 }
@@ -164,10 +164,10 @@ func TestBaseBroker_Unsubscribe(t *testing.T) {
 			BufferSize: 100,
 		},
 	}
-	
+
 	broker := NewBaseBroker(config, logrus.New())
 	ctx := context.Background()
-	
+
 	subscriptions := []entities.InstrumentSubscription{
 		{
 			Symbol: "BTCUSDT",
@@ -180,19 +180,19 @@ func TestBaseBroker_Unsubscribe(t *testing.T) {
 			Market: entities.MarketTypeSpot,
 		},
 	}
-	
-	// Подписываемся
+
+	// Subscribe
 	err := broker.Subscribe(ctx, subscriptions)
 	require.NoError(t, err)
-	
-	// Отписываемся от одного инструмента
+
+	// Unsubscribe from one instrument
 	err = broker.Unsubscribe(ctx, subscriptions[:1])
 	require.NoError(t, err)
-	
-	// Проверяем, что осталась одна подписка
+
+	// Check that one subscription remains
 	brokerSubscriptions := broker.GetSubscriptions()
 	assert.Len(t, brokerSubscriptions, 1)
-	
+
 	stats := broker.GetStats()
 	assert.Equal(t, 1, stats.ActiveSubscriptions)
 }
@@ -206,20 +206,20 @@ func TestBaseBroker_SendData(t *testing.T) {
 			BufferSize: 10,
 		},
 	}
-	
+
 	broker := NewBaseBroker(config, logrus.New())
-	
-	// Тестируем отправку тикера
+
+	// Test ticker sending
 	ticker := entities.Ticker{
 		Symbol:    "BTCUSDT",
 		Price:     50000.0,
 		Volume:    1.5,
 		Timestamp: time.Now(),
 	}
-	
+
 	broker.SendTicker(ticker)
-	
-	// Проверяем, что тикер получен
+
+	// Check that ticker is received
 	select {
 	case receivedTicker := <-broker.GetTickerChannel():
 		assert.Equal(t, ticker.Symbol, receivedTicker.Symbol)
@@ -227,8 +227,8 @@ func TestBaseBroker_SendData(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("Ticker not received")
 	}
-	
-	// Проверяем статистику
+
+	// Check statistics
 	stats := broker.GetStats()
 	assert.Equal(t, int64(1), stats.TotalTickers)
 	assert.False(t, stats.LastDataReceived.IsZero())
@@ -243,18 +243,18 @@ func TestBaseBroker_Health(t *testing.T) {
 			BufferSize: 10,
 		},
 	}
-	
+
 	broker := NewBaseBroker(config, logrus.New())
-	
-	// Проверяем здоровье отключенного брокера
+
+	// Check health of disconnected broker
 	err := broker.Health()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not connected")
-	
-	// Подключаемся и проверяем здоровье
+
+	// Connect and check health
 	err = broker.Connect(context.Background())
 	require.NoError(t, err)
-	
+
 	err = broker.Health()
 	assert.NoError(t, err)
 }
@@ -268,16 +268,16 @@ func TestBaseBroker_StartStop(t *testing.T) {
 			BufferSize: 100,
 		},
 	}
-	
+
 	broker := NewBaseBroker(config, logrus.New())
 	ctx := context.Background()
-	
-	// Запускаем брокер
+
+	// Start broker
 	err := broker.Start(ctx)
 	require.NoError(t, err)
 	assert.True(t, broker.IsConnected())
-	
-	// Останавливаем брокер
+
+	// Stop broker
 	err = broker.Stop()
 	require.NoError(t, err)
 	assert.False(t, broker.IsConnected())

@@ -8,19 +8,19 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// CryptoDataGenerator генерирует реалистичные данные для криптобирж
+// CryptoDataGenerator generates realistic data for crypto exchanges
 type CryptoDataGenerator struct {
 	spotMarkets    []interfaces.SpotMarket
 	futuresMarkets []interfaces.FuturesMarket
 
-	// Текущие цены для симуляции
+	// Current prices for simulation
 	currentPrices map[string]float64
 
-	// Базовые цены для различных символов
+	// Base prices for different symbols
 	basePrices map[string]float64
 }
 
-// NewCryptoDataGenerator создает новый генератор данных
+// NewCryptoDataGenerator creates a new data generator
 func NewCryptoDataGenerator(spotMarkets []interfaces.SpotMarket, futuresMarkets []interfaces.FuturesMarket) *CryptoDataGenerator {
 	generator := &CryptoDataGenerator{
 		spotMarkets:    spotMarkets,
@@ -29,15 +29,15 @@ func NewCryptoDataGenerator(spotMarkets []interfaces.SpotMarket, futuresMarkets 
 		basePrices:     make(map[string]float64),
 	}
 
-	// Инициализируем базовые цены
+	// Initialize base prices
 	generator.initializeBasePrices()
 
 	return generator
 }
 
-// initializeBasePrices устанавливает начальные цены для символов
+// initializeBasePrices sets initial prices for symbols
 func (g *CryptoDataGenerator) initializeBasePrices() {
-	// Реалистичные базовые цены для популярных криптовалют
+	// Realistic base prices for popular cryptocurrencies
 	g.basePrices["BTCUSDT"] = 45000.0
 	g.basePrices["ETHUSDT"] = 3000.0
 	g.basePrices["ADAUSDT"] = 0.5
@@ -47,29 +47,29 @@ func (g *CryptoDataGenerator) initializeBasePrices() {
 	g.basePrices["DOTUSDT"] = 7.0
 	g.basePrices["LINKUSDT"] = 15.0
 
-	// Копируем базовые цены в текущие
+	// Copy base prices to current prices
 	for symbol, price := range g.basePrices {
 		g.currentPrices[symbol] = price
 	}
 }
 
-// GenerateTicker генерирует реалистичный тикер
+// GenerateTicker generates realistic ticker
 func (g *CryptoDataGenerator) GenerateTicker(symbol string, market entities.MarketType, timestamp time.Time) *entities.Ticker {
 	basePrice, exists := g.currentPrices[symbol]
 	if !exists {
-		// Если символ не найден, используем случайную цену
+		// If symbol not found, use random price
 		basePrice = rand.Float64() * 1000
 		g.currentPrices[symbol] = basePrice
 	}
 
-	// Генерируем небольшое изменение цены (±2%)
+	// Generate small price change (±2%)
 	priceChange := (rand.Float64() - 0.5) * 0.04 * basePrice
 	newPrice := basePrice + priceChange
 
-	// Обновляем текущую цену
+	// Update current price
 	g.currentPrices[symbol] = newPrice
 
-	// Генерируем объем
+	// Generate volume
 	volume := rand.Float64() * 100
 
 	ticker := &entities.Ticker{
@@ -80,7 +80,7 @@ func (g *CryptoDataGenerator) GenerateTicker(symbol string, market entities.Mark
 		Timestamp: timestamp,
 	}
 
-	// Устанавливаем тип инструмента
+	// Set instrument type
 	switch market {
 	case entities.MarketTypeSpot:
 		ticker.Type = entities.InstrumentTypeSpot
@@ -88,21 +88,21 @@ func (g *CryptoDataGenerator) GenerateTicker(symbol string, market entities.Mark
 		ticker.Type = entities.InstrumentTypeFutures
 	}
 
-	// Добавляем дополнительные поля
+	// Add additional fields
 	ticker.Change = priceChange
 	ticker.ChangePercent = (priceChange / basePrice) * 100
 	ticker.High24h = newPrice * (1 + rand.Float64()*0.05)
 	ticker.Low24h = newPrice * (1 - rand.Float64()*0.05)
 	ticker.Volume24h = volume * (20 + rand.Float64()*10)
 
-	// Для фьючерсов добавляем открытый интерес
+	// For futures add open interest
 	if market == entities.MarketTypeFutures {
 		ticker.OpenInterest = rand.Float64() * 1000000
 	}
 
-	// Для спота добавляем bid/ask
+	// For spot add bid/ask
 	if market == entities.MarketTypeSpot {
-		spread := newPrice * 0.001 // 0.1% спред
+		spread := newPrice * 0.001 // 0.1% spread
 		ticker.BidPrice = newPrice - spread/2
 		ticker.AskPrice = newPrice + spread/2
 		ticker.BidSize = rand.Float64() * 10
@@ -112,7 +112,7 @@ func (g *CryptoDataGenerator) GenerateTicker(symbol string, market entities.Mark
 	return ticker
 }
 
-// GenerateCandle генерирует реалистичную свечу
+// GenerateCandle generates realistic candle
 func (g *CryptoDataGenerator) GenerateCandle(symbol string, market entities.MarketType, timestamp time.Time) *entities.Candle {
 	basePrice, exists := g.currentPrices[symbol]
 	if !exists {
@@ -120,15 +120,15 @@ func (g *CryptoDataGenerator) GenerateCandle(symbol string, market entities.Mark
 		g.currentPrices[symbol] = basePrice
 	}
 
-	// Генерируем OHLC данные
+	// Generate OHLC data
 	open := basePrice
-	volatility := 0.02 // 2% волатильность
+	volatility := 0.02 // 2% volatility
 
 	high := open * (1 + rand.Float64()*volatility)
 	low := open * (1 - rand.Float64()*volatility)
 	close := low + rand.Float64()*(high-low)
 
-	// Обновляем текущую цену
+	// Update current price
 	g.currentPrices[symbol] = close
 
 	volume := rand.Float64() * 1000
@@ -145,7 +145,7 @@ func (g *CryptoDataGenerator) GenerateCandle(symbol string, market entities.Mark
 		Timeframe: "1m",
 	}
 
-	// Устанавливаем тип инструмента
+	// Set instrument type
 	switch market {
 	case entities.MarketTypeSpot:
 		candle.Type = entities.InstrumentTypeSpot
@@ -153,11 +153,11 @@ func (g *CryptoDataGenerator) GenerateCandle(symbol string, market entities.Mark
 		candle.Type = entities.InstrumentTypeFutures
 	}
 
-	// Добавляем дополнительные поля
+	// Add additional fields
 	candle.Trades = int64(rand.Intn(1000) + 100)
 	candle.QuoteVolume = volume * close
 
-	// Для фьючерсов добавляем открытый интерес
+	// For futures add open interest
 	if market == entities.MarketTypeFutures {
 		candle.OpenInterest = rand.Float64() * 1000000
 	}
@@ -165,7 +165,7 @@ func (g *CryptoDataGenerator) GenerateCandle(symbol string, market entities.Mark
 	return candle
 }
 
-// GenerateOrderBook генерирует реалистичный стакан заявок
+// GenerateOrderBook generates realistic order book
 func (g *CryptoDataGenerator) GenerateOrderBook(symbol string, market entities.MarketType, timestamp time.Time) *entities.OrderBook {
 	basePrice, exists := g.currentPrices[symbol]
 	if !exists {
@@ -173,13 +173,13 @@ func (g *CryptoDataGenerator) GenerateOrderBook(symbol string, market entities.M
 		g.currentPrices[symbol] = basePrice
 	}
 
-	// Генерируем уровни bid и ask
+	// Generate bid and ask levels
 	bids := make([]entities.PriceLevel, 0, 20)
 	asks := make([]entities.PriceLevel, 0, 20)
 
-	// Генерируем bid уровни (ниже текущей цены)
+	// Generate bid levels (below current price)
 	for i := 0; i < 20; i++ {
-		price := basePrice * (1 - float64(i+1)*0.001) // Каждый уровень на 0.1% ниже
+		price := basePrice * (1 - float64(i+1)*0.001) // Each level 0.1% lower
 		quantity := rand.Float64() * 10
 		bids = append(bids, entities.PriceLevel{
 			Price:    price,
@@ -187,9 +187,9 @@ func (g *CryptoDataGenerator) GenerateOrderBook(symbol string, market entities.M
 		})
 	}
 
-	// Генерируем ask уровни (выше текущей цены)
+	// Generate ask levels (above current price)
 	for i := 0; i < 20; i++ {
-		price := basePrice * (1 + float64(i+1)*0.001) // Каждый уровень на 0.1% выше
+		price := basePrice * (1 + float64(i+1)*0.001) // Each level 0.1% higher
 		quantity := rand.Float64() * 10
 		asks = append(asks, entities.PriceLevel{
 			Price:    price,
@@ -205,7 +205,7 @@ func (g *CryptoDataGenerator) GenerateOrderBook(symbol string, market entities.M
 		Timestamp: timestamp,
 	}
 
-	// Устанавливаем тип инструмента
+	// Set instrument type
 	switch market {
 	case entities.MarketTypeSpot:
 		orderBook.Type = entities.InstrumentTypeSpot
@@ -213,19 +213,19 @@ func (g *CryptoDataGenerator) GenerateOrderBook(symbol string, market entities.M
 		orderBook.Type = entities.InstrumentTypeFutures
 	}
 
-	// Добавляем дополнительные поля
+	// Add additional fields
 	orderBook.LastUpdateID = rand.Int63n(1000000)
 	orderBook.EventTime = timestamp
 
 	return orderBook
 }
 
-// GenerateFundingRate генерирует ставку финансирования
+// GenerateFundingRate generates funding rate
 func (g *CryptoDataGenerator) GenerateFundingRate(symbol string, timestamp time.Time) interfaces.FundingRate {
-	// Генерируем реалистичную ставку финансирования (-0.1% до 0.1%)
+	// Generate realistic funding rate (-0.1% to 0.1%)
 	rate := (rand.Float64() - 0.5) * 0.002
 
-	// Следующее время финансирования (каждые 8 часов)
+	// Next funding time (every 8 hours)
 	nextTime := timestamp.Truncate(8 * time.Hour).Add(8 * time.Hour)
 
 	return interfaces.FundingRate{
@@ -236,14 +236,14 @@ func (g *CryptoDataGenerator) GenerateFundingRate(symbol string, timestamp time.
 	}
 }
 
-// GenerateMarkPrice генерирует маркировочную цену
+// GenerateMarkPrice generates mark price
 func (g *CryptoDataGenerator) GenerateMarkPrice(symbol string, timestamp time.Time) interfaces.MarkPrice {
 	basePrice, exists := g.currentPrices[symbol]
 	if !exists {
 		basePrice = rand.Float64() * 1000
 	}
 
-	// Маркировочная цена обычно близка к спот цене
+	// Mark price is usually close to spot price
 	markPrice := basePrice * (1 + (rand.Float64()-0.5)*0.001)   // ±0.05%
 	indexPrice := basePrice * (1 + (rand.Float64()-0.5)*0.0005) // ±0.025%
 
@@ -255,23 +255,23 @@ func (g *CryptoDataGenerator) GenerateMarkPrice(symbol string, timestamp time.Ti
 	}
 }
 
-// GenerateLiquidation генерирует ликвидацию
+// GenerateLiquidation generates liquidation
 func (g *CryptoDataGenerator) GenerateLiquidation(symbol string, timestamp time.Time) interfaces.Liquidation {
 	basePrice, exists := g.currentPrices[symbol]
 	if !exists {
 		basePrice = rand.Float64() * 1000
 	}
 
-	// Цена ликвидации может отличаться от текущей цены
+	// Liquidation price may differ from current price
 	liquidationPrice := basePrice * (1 + (rand.Float64()-0.5)*0.02) // ±1%
 
-	// Случайная сторона
+	// Random side
 	side := "BUY"
 	if rand.Float32() < 0.5 {
 		side = "SELL"
 	}
 
-	// Случайное количество
+	// Random quantity
 	quantity := rand.Float64() * 100
 
 	return interfaces.Liquidation{
@@ -283,7 +283,7 @@ func (g *CryptoDataGenerator) GenerateLiquidation(symbol string, timestamp time.
 	}
 }
 
-// GetCurrentPrice возвращает текущую цену символа
+// GetCurrentPrice returns current price of symbol
 func (g *CryptoDataGenerator) GetCurrentPrice(symbol string) float64 {
 	if price, exists := g.currentPrices[symbol]; exists {
 		return price
@@ -291,12 +291,12 @@ func (g *CryptoDataGenerator) GetCurrentPrice(symbol string) float64 {
 	return 0
 }
 
-// SetCurrentPrice устанавливает текущую цену символа
+// SetCurrentPrice sets current price of symbol
 func (g *CryptoDataGenerator) SetCurrentPrice(symbol string, price float64) {
 	g.currentPrices[symbol] = price
 }
 
-// GenerateRealisticPriceMovement генерирует реалистичное движение цены
+// GenerateRealisticPriceMovement generates realistic price movement
 func (g *CryptoDataGenerator) GenerateRealisticPriceMovement(symbol string, volatility float64) float64 {
 	basePrice, exists := g.currentPrices[symbol]
 	if !exists {
@@ -306,20 +306,20 @@ func (g *CryptoDataGenerator) GenerateRealisticPriceMovement(symbol string, vola
 		}
 	}
 
-	// Используем модель случайного блуждания с возвратом к среднему
-	meanReversion := 0.01 // Сила возврата к среднему
+	// Use random walk model with mean reversion
+	meanReversion := 0.01 // Mean reversion strength
 	baseValue := g.basePrices[symbol]
 
-	// Случайный компонент
+	// Random component
 	randomComponent := (rand.Float64() - 0.5) * volatility * basePrice
 
-	// Компонент возврата к среднему
+	// Mean reversion component
 	meanReversionComponent := (baseValue - basePrice) * meanReversion
 
-	// Новая цена
+	// New price
 	newPrice := basePrice + randomComponent + meanReversionComponent
 
-	// Убеждаемся, что цена положительная
+	// Ensure price is positive
 	if newPrice <= 0 {
 		newPrice = basePrice * 0.99
 	}

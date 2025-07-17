@@ -9,7 +9,7 @@ import (
 	"m-data-storage/internal/infrastructure/logger"
 )
 
-// createTestLogger создает логгер для тестов
+// createTestLogger creates logger for tests
 func createTestLogger() *logger.Logger {
 	logrusLogger := logrus.New()
 	logrusLogger.SetLevel(logrus.InfoLevel)

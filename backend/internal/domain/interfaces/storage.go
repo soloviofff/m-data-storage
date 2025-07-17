@@ -8,7 +8,7 @@ import (
 	"m-data-storage/internal/domain/entities"
 )
 
-// TickerFilter - фильтр для получения тикеров
+// TickerFilter - filter for ticker retrieval
 type TickerFilter struct {
 	Symbols   []string                  `json:"symbols,omitempty"`
 	BrokerIDs []string                  `json:"broker_ids,omitempty"`
@@ -20,7 +20,7 @@ type TickerFilter struct {
 	Offset    int                       `json:"offset,omitempty"`
 }
 
-// CandleFilter - фильтр для получения свечей
+// CandleFilter - filter for candle retrieval
 type CandleFilter struct {
 	Symbols    []string                  `json:"symbols,omitempty"`
 	BrokerIDs  []string                  `json:"broker_ids,omitempty"`
@@ -33,7 +33,7 @@ type CandleFilter struct {
 	Offset     int                       `json:"offset,omitempty"`
 }
 
-// OrderBookFilter - фильтр для получения ордербуков
+// OrderBookFilter - filter for order book retrieval
 type OrderBookFilter struct {
 	Symbols   []string                  `json:"symbols,omitempty"`
 	BrokerIDs []string                  `json:"broker_ids,omitempty"`
@@ -45,89 +45,89 @@ type OrderBookFilter struct {
 	Offset    int                       `json:"offset,omitempty"`
 }
 
-// Storage - основной интерфейс для хранилища данных
+// Storage - main interface for data storage
 type Storage interface {
-	// Сохранение данных
+	// Data saving
 	SaveTickers(ctx context.Context, tickers []entities.Ticker) error
 	SaveCandles(ctx context.Context, candles []entities.Candle) error
 	SaveOrderBooks(ctx context.Context, orderBooks []entities.OrderBook) error
 
-	// Получение данных
+	// Data retrieval
 	GetTickers(ctx context.Context, filter TickerFilter) ([]entities.Ticker, error)
 	GetCandles(ctx context.Context, filter CandleFilter) ([]entities.Candle, error)
 	GetOrderBooks(ctx context.Context, filter OrderBookFilter) ([]entities.OrderBook, error)
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	Connect(ctx context.Context) error
 	Disconnect() error
 	Health() error
 
-	// Статистика
+	// Statistics
 	GetStats(ctx context.Context) (StorageStats, error)
 }
 
-// MetadataStorage - интерфейс для хранения метаданных (SQLite)
+// MetadataStorage - interface for metadata storage (SQLite)
 type MetadataStorage interface {
-	// Управление инструментами
+	// Instrument management
 	SaveInstrument(ctx context.Context, instrument entities.InstrumentInfo) error
 	GetInstrument(ctx context.Context, symbol string) (*entities.InstrumentInfo, error)
 	ListInstruments(ctx context.Context) ([]entities.InstrumentInfo, error)
 	DeleteInstrument(ctx context.Context, symbol string) error
 
-	// Управление подписками
+	// Subscription management
 	SaveSubscription(ctx context.Context, subscription entities.InstrumentSubscription) error
 	GetSubscription(ctx context.Context, id string) (*entities.InstrumentSubscription, error)
 	ListSubscriptions(ctx context.Context) ([]entities.InstrumentSubscription, error)
 	UpdateSubscription(ctx context.Context, subscription entities.InstrumentSubscription) error
 	DeleteSubscription(ctx context.Context, id string) error
 
-	// Управление конфигурацией брокеров
+	// Broker configuration management
 	SaveBrokerConfig(ctx context.Context, config BrokerConfig) error
 	GetBrokerConfig(ctx context.Context, brokerID string) (*BrokerConfig, error)
 	ListBrokerConfigs(ctx context.Context) ([]BrokerConfig, error)
 	DeleteBrokerConfig(ctx context.Context, brokerID string) error
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	Connect(ctx context.Context) error
 	Disconnect() error
 	Health() error
 	Migrate() error
 
-	// Доступ к базе данных для миграций
+	// Database access for migrations
 	GetDB() *sql.DB
 }
 
-// TimeSeriesStorage - интерфейс для хранения временных рядов (QuestDB)
+// TimeSeriesStorage - interface for time series storage (QuestDB)
 type TimeSeriesStorage interface {
-	// Сохранение временных рядов
+	// Time series saving
 	SaveTickers(ctx context.Context, tickers []entities.Ticker) error
 	SaveCandles(ctx context.Context, candles []entities.Candle) error
 	SaveOrderBooks(ctx context.Context, orderBooks []entities.OrderBook) error
 
-	// Получение временных рядов
+	// Time series retrieval
 	GetTickers(ctx context.Context, filter TickerFilter) ([]entities.Ticker, error)
 	GetCandles(ctx context.Context, filter CandleFilter) ([]entities.Candle, error)
 	GetOrderBooks(ctx context.Context, filter OrderBookFilter) ([]entities.OrderBook, error)
 
-	// Агрегация данных
+	// Data aggregation
 	GetTickerAggregates(ctx context.Context, symbol string, interval string, startTime, endTime time.Time) ([]TickerAggregate, error)
 	GetCandleAggregates(ctx context.Context, symbol string, interval string, startTime, endTime time.Time) ([]CandleAggregate, error)
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	Connect(ctx context.Context) error
 	Disconnect() error
 	Health() error
 
-	// Доступ к базе данных для миграций
+	// Database access for migrations
 	GetDB() *sql.DB
 
-	// Очистка старых данных
+	// Old data cleanup
 	CleanupOldData(ctx context.Context, retentionPeriod time.Duration) error
 }
 
-// StorageManager - менеджер для управления хранилищами
+// StorageManager - manager for storage management
 type StorageManager interface {
-	// Основные операции
+	// Basic operations
 	SaveTickers(ctx context.Context, tickers []entities.Ticker) error
 	SaveCandles(ctx context.Context, candles []entities.Candle) error
 	SaveOrderBooks(ctx context.Context, orderBooks []entities.OrderBook) error
@@ -136,17 +136,17 @@ type StorageManager interface {
 	GetCandles(ctx context.Context, filter CandleFilter) ([]entities.Candle, error)
 	GetOrderBooks(ctx context.Context, filter OrderBookFilter) ([]entities.OrderBook, error)
 
-	// Управление метаданными
+	// Metadata management
 	GetMetadataStorage() MetadataStorage
 	GetTimeSeriesStorage() TimeSeriesStorage
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	Initialize(ctx context.Context) error
 	Shutdown() error
 	Health() map[string]error
 }
 
-// StorageStats - статистика хранилища
+// StorageStats - storage statistics
 type StorageStats struct {
 	TotalTickers    int64     `json:"total_tickers"`
 	TotalCandles    int64     `json:"total_candles"`
@@ -156,7 +156,7 @@ type StorageStats struct {
 	StorageSize     int64     `json:"storage_size_bytes"`
 }
 
-// TickerAggregate - агрегированные данные тикеров
+// TickerAggregate - aggregated ticker data
 type TickerAggregate struct {
 	Symbol    string    `json:"symbol"`
 	Timestamp time.Time `json:"timestamp"`
@@ -167,7 +167,7 @@ type TickerAggregate struct {
 	Count     int64     `json:"count"`
 }
 
-// CandleAggregate - агрегированные данные свечей
+// CandleAggregate - aggregated candle data
 type CandleAggregate struct {
 	Symbol    string    `json:"symbol"`
 	Timestamp time.Time `json:"timestamp"`

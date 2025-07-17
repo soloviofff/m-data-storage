@@ -16,35 +16,35 @@ import (
 	"m-data-storage/internal/infrastructure/broker"
 )
 
-// TestFullDataPipeline тестирует полный цикл работы системы:
-// Конфигурация -> Создание брокеров -> Подключение к хранилищу -> Обработка данных -> Сохранение
+// TestFullDataPipeline tests the full system workflow:
+// Configuration -> Broker creation -> Storage connection -> Data processing -> Saving
 func TestFullDataPipeline(t *testing.T) {
 	logger := logrus.New()
-	logger.SetLevel(logrus.WarnLevel) // Уменьшаем логирование для тестов
+	logger.SetLevel(logrus.WarnLevel) // Reduce logging for tests
 
-	// 1. Создаем компоненты системы
+	// 1. Create system components
 
-	// Создаем мок хранилища
+	// Create storage mock
 	mockStorageService := &MockStorageService{}
 	mockStorageService.On("SaveTicker", mock.Anything, mock.AnythingOfType("entities.Ticker")).Return(nil)
 	mockStorageService.On("SaveCandle", mock.Anything, mock.AnythingOfType("entities.Candle")).Return(nil)
 	mockStorageService.On("SaveOrderBook", mock.Anything, mock.AnythingOfType("entities.OrderBook")).Return(nil).Maybe()
 
-	// Создаем фабрику и менеджер брокеров
+	// Create broker factory and manager
 	factory := broker.NewFactory(logger)
 	brokerManager := broker.NewManager(factory, logger)
 
-	// Создаем интеграцию хранилища
+	// Create storage integration
 	storageIntegration := NewBrokerStorageIntegration(brokerManager, mockStorageService, logger)
 
-	// Создаем пайплайн данных
+	// Create data pipeline
 	pipelineConfig := DefaultDataPipelineConfig()
-	pipelineConfig.AutoConnectBrokers = false            // Управляем подключением вручную
-	pipelineConfig.HealthCheckInterval = 1 * time.Second // Ускоряем для тестов
+	pipelineConfig.AutoConnectBrokers = false            // Manage connections manually
+	pipelineConfig.HealthCheckInterval = 1 * time.Second // Speed up for tests
 
 	pipeline := NewDataPipelineService(brokerManager, storageIntegration, logger, pipelineConfig)
 
-	// 2. Запускаем пайплайн
+	// 2. Start pipeline
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -52,7 +52,7 @@ func TestFullDataPipeline(t *testing.T) {
 	require.NoError(t, err)
 	defer pipeline.Stop()
 
-	// 3. Добавляем криптоброкер
+	// 3. Add crypto broker
 	cryptoConfig := interfaces.BrokerConfig{
 		ID:      "crypto-test",
 		Name:    "Crypto Test Broker",
@@ -75,7 +75,7 @@ func TestFullDataPipeline(t *testing.T) {
 	err = pipeline.AddBroker(ctx, cryptoConfig)
 	require.NoError(t, err)
 
-	// 4. Добавляем фондовый брокер
+	// 4. Add stock broker
 	stockConfig := interfaces.BrokerConfig{
 		ID:      "stock-test",
 		Name:    "Stock Test Broker",
@@ -98,7 +98,7 @@ func TestFullDataPipeline(t *testing.T) {
 	err = pipeline.AddBroker(ctx, stockConfig)
 	require.NoError(t, err)
 
-	// 5. Подписываемся на инструменты
+	// 5. Subscribe to instruments
 	cryptoSubscriptions := []entities.InstrumentSubscription{
 		{
 			Symbol: "BTCUSDT",
@@ -131,10 +131,10 @@ func TestFullDataPipeline(t *testing.T) {
 	err = pipeline.Subscribe(ctx, "stock-test", stockSubscriptions)
 	require.NoError(t, err)
 
-	// 6. Ждем генерации и обработки данных
+	// 6. Wait for data generation and processing
 	time.Sleep(3 * time.Second)
 
-	// 7. Проверяем статистику
+	// 7. Check statistics
 	stats := pipeline.GetStats()
 	assert.False(t, stats.StartedAt.IsZero())
 	assert.Equal(t, 2, stats.ConnectedBrokers)
@@ -144,22 +144,22 @@ func TestFullDataPipeline(t *testing.T) {
 	assert.True(t, integrationStats.TotalTickers > 0)
 	assert.True(t, integrationStats.TotalCandles > 0)
 
-	// 8. Проверяем здоровье системы
+	// 8. Check system health
 	err = pipeline.Health()
 	assert.NoError(t, err)
 
-	// 9. Проверяем, что данные сохраняются
+	// 9. Check that data is being saved
 	mockStorageService.AssertExpectations(t)
 
-	// 10. Отписываемся от части инструментов
+	// 10. Unsubscribe from some instruments
 	err = pipeline.Unsubscribe(ctx, "crypto-test", cryptoSubscriptions[:1])
 	require.NoError(t, err)
 
-	// 11. Удаляем один брокер
+	// 11. Remove one broker
 	err = pipeline.RemoveBroker(ctx, "stock-test")
 	require.NoError(t, err)
 
-	// 12. Проверяем обновленную статистику
+	// 12. Check updated statistics
 	finalStats := pipeline.GetStats()
 	assert.Equal(t, 1, finalStats.ConnectedBrokers)
 
@@ -167,12 +167,12 @@ func TestFullDataPipeline(t *testing.T) {
 	assert.Equal(t, 1, finalIntegrationStats.ActiveBrokers)
 }
 
-// TestBrokerFailureRecovery тестирует восстановление после сбоев брокера
+// TestBrokerFailureRecovery tests recovery after broker failures
 func TestBrokerFailureRecovery(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
-	// Создаем компоненты
+	// Create components
 	mockStorageService := &MockStorageService{}
 	mockStorageService.On("SaveTicker", mock.Anything, mock.AnythingOfType("entities.Ticker")).Return(nil)
 	mockStorageService.On("SaveCandle", mock.Anything, mock.AnythingOfType("entities.Candle")).Return(nil)
@@ -191,12 +191,12 @@ func TestBrokerFailureRecovery(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	// Запускаем пайплайн
+	// Start pipeline
 	err := pipeline.Start(ctx)
 	require.NoError(t, err)
 	defer pipeline.Stop()
 
-	// Добавляем брокер
+	// Add broker
 	config := interfaces.BrokerConfig{
 		ID:      "test-broker",
 		Name:    "Test Broker",
@@ -217,19 +217,19 @@ func TestBrokerFailureRecovery(t *testing.T) {
 	err = pipeline.AddBroker(ctx, config)
 	require.NoError(t, err)
 
-	// Проверяем, что брокер работает
+	// Check that broker is working
 	time.Sleep(1 * time.Second)
 	err = pipeline.Health()
 	assert.NoError(t, err)
 
-	// Симулируем сбой брокера (удаляем и добавляем снова)
+	// Simulate broker failure (remove and add again)
 	err = pipeline.RemoveBroker(ctx, "test-broker")
 	require.NoError(t, err)
 
-	// Ждем полного удаления
+	// Wait for complete removal
 	time.Sleep(2 * time.Second)
 
-	// Создаем новую конфигурацию с другим ID для избежания конфликтов
+	// Create new configuration with different ID to avoid conflicts
 	recoveryConfig := interfaces.BrokerConfig{
 		ID:      "test-broker-recovery",
 		Name:    "Test Broker Recovery",
@@ -250,7 +250,7 @@ func TestBrokerFailureRecovery(t *testing.T) {
 	err = pipeline.AddBroker(ctx, recoveryConfig)
 	require.NoError(t, err)
 
-	// Проверяем восстановление
+	// Check recovery
 	time.Sleep(1 * time.Second)
 	err = pipeline.Health()
 	assert.NoError(t, err)
@@ -259,12 +259,12 @@ func TestBrokerFailureRecovery(t *testing.T) {
 	assert.Equal(t, 1, stats.ConnectedBrokers)
 }
 
-// TestConcurrentOperations тестирует конкурентные операции
+// TestConcurrentOperations tests concurrent operations
 func TestConcurrentOperations(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.WarnLevel)
 
-	// Создаем компоненты
+	// Create components
 	mockStorageService := &MockStorageService{}
 	mockStorageService.On("SaveTicker", mock.Anything, mock.AnythingOfType("entities.Ticker")).Return(nil)
 	mockStorageService.On("SaveCandle", mock.Anything, mock.AnythingOfType("entities.Candle")).Return(nil)
@@ -279,12 +279,12 @@ func TestConcurrentOperations(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Запускаем пайплайн
+	// Start pipeline
 	err := pipeline.Start(ctx)
 	require.NoError(t, err)
 	defer pipeline.Stop()
 
-	// Конкурентно добавляем несколько брокеров
+	// Concurrently add multiple brokers
 	const numBrokers = 5
 	done := make(chan bool, numBrokers)
 
@@ -314,16 +314,16 @@ func TestConcurrentOperations(t *testing.T) {
 		}(i)
 	}
 
-	// Ждем завершения всех горутин
+	// Wait for all goroutines to complete
 	for i := 0; i < numBrokers; i++ {
 		<-done
 	}
 
-	// Проверяем, что все брокеры добавлены
+	// Check that all brokers are added
 	stats := pipeline.GetStats()
 	assert.Equal(t, numBrokers, stats.ConnectedBrokers)
 
-	// Проверяем здоровье
+	// Check health
 	err = pipeline.Health()
 	assert.NoError(t, err)
 }

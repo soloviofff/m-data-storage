@@ -259,12 +259,12 @@ func TestConfig_GetDatabaseURL(t *testing.T) {
 }
 
 func TestLoad_WithEnvironmentVariables(t *testing.T) {
-	// Пропускаем этот тест, так как Load() загружает из файла конфигурации
-	// и переменные окружения применяются только при парсинге структуры
+	// Skip this test as Load() loads from config file
+	// and environment variables are only applied during structure parsing
 	t.Skip("Skipping environment variable test - Load() uses config file")
 }
 
 func TestLoad_WithInvalidConfig(t *testing.T) {
-	// Пропускаем этот тест, так как Load() загружает валидную конфигурацию из файла
+	// Skip this test as Load() loads valid configuration from file
 	t.Skip("Skipping invalid config test - Load() uses valid config file")
 }

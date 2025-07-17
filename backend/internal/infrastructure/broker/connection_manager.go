@@ -11,7 +11,7 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// ConnectionState представляет состояние соединения
+// ConnectionState represents connection state
 type ConnectionState string
 
 const (
@@ -22,7 +22,7 @@ const (
 	StateError        ConnectionState = "error"
 )
 
-// ConnectionInfo содержит информацию о соединении
+// ConnectionInfo contains connection information
 type ConnectionInfo struct {
 	State           ConnectionState `json:"state"`
 	ConnectedAt     time.Time       `json:"connected_at"`
@@ -31,33 +31,33 @@ type ConnectionInfo struct {
 	LastReconnectAt time.Time       `json:"last_reconnect_at"`
 }
 
-// ConnectionManager управляет соединениями брокеров
+// ConnectionManager manages broker connections
 type ConnectionManager struct {
-	config      interfaces.ConnectionConfig
-	logger      *logrus.Logger
-	state       ConnectionState
-	info        ConnectionInfo
-	mu          sync.RWMutex
-	
-	// Управление переподключением
+	config interfaces.ConnectionConfig
+	logger *logrus.Logger
+	state  ConnectionState
+	info   ConnectionInfo
+	mu     sync.RWMutex
+
+	// Reconnection management
 	reconnectTimer *time.Timer
 	ctx            context.Context
 	cancel         context.CancelFunc
-	
-	// Колбэки
+
+	// Callbacks
 	onConnect    func() error
 	onDisconnect func() error
 	onError      func(error)
 }
 
-// NewConnectionManager создает новый менеджер соединений
+// NewConnectionManager creates a new connection manager
 func NewConnectionManager(config interfaces.ConnectionConfig, logger *logrus.Logger) *ConnectionManager {
 	if logger == nil {
 		logger = logrus.New()
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &ConnectionManager{
 		config: config,
 		logger: logger,
@@ -70,164 +70,164 @@ func NewConnectionManager(config interfaces.ConnectionConfig, logger *logrus.Log
 	}
 }
 
-// SetCallbacks устанавливает колбэки для событий соединения
+// SetCallbacks sets callbacks for connection events
 func (cm *ConnectionManager) SetCallbacks(onConnect, onDisconnect func() error, onError func(error)) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
-	
+
 	cm.onConnect = onConnect
 	cm.onDisconnect = onDisconnect
 	cm.onError = onError
 }
 
-// Connect устанавливает соединение
+// Connect establishes connection
 func (cm *ConnectionManager) Connect(ctx context.Context) error {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
-	
+
 	if cm.state == StateConnected {
 		return nil
 	}
-	
+
 	cm.setState(StateConnecting)
 	cm.logger.Info("Establishing connection")
-	
-	// Вызываем колбэк подключения
+
+	// Call connection callback
 	if cm.onConnect != nil {
 		if err := cm.onConnect(); err != nil {
 			cm.setError(fmt.Errorf("connection callback failed: %w", err))
 			return err
 		}
 	}
-	
+
 	cm.setState(StateConnected)
 	cm.info.ConnectedAt = time.Now()
 	cm.logger.Info("Connection established successfully")
-	
+
 	return nil
 }
 
-// Disconnect разрывает соединение
+// Disconnect breaks connection
 func (cm *ConnectionManager) Disconnect() error {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
-	
+
 	if cm.state == StateDisconnected {
 		return nil
 	}
-	
+
 	cm.logger.Info("Disconnecting")
-	
-	// Останавливаем таймер переподключения
+
+	// Stop reconnection timer
 	if cm.reconnectTimer != nil {
 		cm.reconnectTimer.Stop()
 		cm.reconnectTimer = nil
 	}
-	
-	// Отменяем контекст
+
+	// Cancel context
 	cm.cancel()
-	
-	// Вызываем колбэк отключения
+
+	// Call disconnection callback
 	if cm.onDisconnect != nil {
 		if err := cm.onDisconnect(); err != nil {
 			cm.logger.WithError(err).Warn("Disconnect callback failed")
 		}
 	}
-	
+
 	cm.setState(StateDisconnected)
 	cm.logger.Info("Disconnected successfully")
-	
+
 	return nil
 }
 
-// IsConnected возвращает статус соединения
+// IsConnected returns connection status
 func (cm *ConnectionManager) IsConnected() bool {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 	return cm.state == StateConnected
 }
 
-// GetState возвращает текущее состояние соединения
+// GetState returns current connection state
 func (cm *ConnectionManager) GetState() ConnectionState {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 	return cm.state
 }
 
-// GetInfo возвращает информацию о соединении
+// GetInfo returns connection information
 func (cm *ConnectionManager) GetInfo() ConnectionInfo {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 	return cm.info
 }
 
-// HandleError обрабатывает ошибку соединения
+// HandleError handles connection error
 func (cm *ConnectionManager) HandleError(err error) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
-	
+
 	cm.logger.WithError(err).Error("Connection error occurred")
-	
-	// Вызываем колбэк ошибки
+
+	// Call error callback
 	if cm.onError != nil {
 		cm.onError(err)
 	}
-	
+
 	cm.setError(err)
-	
-	// Запускаем переподключение, если настроено
+
+	// Start reconnection if configured
 	if cm.config.MaxReconnectAttempts > 0 && cm.info.ReconnectCount < cm.config.MaxReconnectAttempts {
 		cm.scheduleReconnect()
 	}
 }
 
-// setState устанавливает состояние соединения
+// setState sets connection state
 func (cm *ConnectionManager) setState(state ConnectionState) {
 	cm.state = state
 	cm.info.State = state
 }
 
-// setError устанавливает ошибку
+// setError sets error
 func (cm *ConnectionManager) setError(err error) {
 	cm.setState(StateError)
 	cm.info.LastError = err.Error()
 }
 
-// scheduleReconnect планирует переподключение
+// scheduleReconnect schedules reconnection
 func (cm *ConnectionManager) scheduleReconnect() {
 	if cm.reconnectTimer != nil {
 		cm.reconnectTimer.Stop()
 	}
-	
+
 	cm.setState(StateReconnecting)
 	cm.info.ReconnectCount++
 	cm.info.LastReconnectAt = time.Now()
-	
+
 	delay := cm.config.ReconnectDelay
 	if delay == 0 {
-		delay = 5 * time.Second // Значение по умолчанию
+		delay = 5 * time.Second // Default value
 	}
-	
+
 	cm.logger.WithFields(logrus.Fields{
 		"attempt": cm.info.ReconnectCount,
 		"delay":   delay,
 	}).Info("Scheduling reconnection")
-	
+
 	cm.reconnectTimer = time.AfterFunc(delay, func() {
 		cm.mu.Lock()
 		defer cm.mu.Unlock()
-		
+
 		if cm.state != StateReconnecting {
 			return
 		}
-		
+
 		cm.logger.WithField("attempt", cm.info.ReconnectCount).Info("Attempting to reconnect")
-		
-		// Пытаемся переподключиться
+
+		// Try to reconnect
 		if err := cm.Connect(cm.ctx); err != nil {
 			cm.logger.WithError(err).Error("Reconnection failed")
-			
-			// Планируем следующую попытку, если не достигли лимита
+
+			// Schedule next attempt if limit not reached
 			if cm.info.ReconnectCount < cm.config.MaxReconnectAttempts {
 				cm.scheduleReconnect()
 			} else {
@@ -236,21 +236,21 @@ func (cm *ConnectionManager) scheduleReconnect() {
 			}
 		} else {
 			cm.logger.Info("Reconnection successful")
-			cm.info.ReconnectCount = 0 // Сбрасываем счетчик при успешном подключении
+			cm.info.ReconnectCount = 0 // Reset counter on successful connection
 		}
 	})
 }
 
-// StartHealthCheck запускает периодическую проверку здоровья соединения
+// StartHealthCheck starts periodic connection health check
 func (cm *ConnectionManager) StartHealthCheck(healthCheck func() error) {
 	if cm.config.PingInterval == 0 {
-		return // Проверка здоровья отключена
+		return // Health check disabled
 	}
-	
+
 	go func() {
 		ticker := time.NewTicker(cm.config.PingInterval)
 		defer ticker.Stop()
-		
+
 		for {
 			select {
 			case <-cm.ctx.Done():
@@ -266,7 +266,7 @@ func (cm *ConnectionManager) StartHealthCheck(healthCheck func() error) {
 	}()
 }
 
-// Shutdown корректно завершает работу менеджера соединений
+// Shutdown gracefully shuts down the connection manager
 func (cm *ConnectionManager) Shutdown() error {
 	return cm.Disconnect()
 }

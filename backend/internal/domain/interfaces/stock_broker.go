@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// StockMarket - фондовый рынок
+// StockMarket - stock market
 type StockMarket struct {
 	Symbol            string    `json:"symbol"`
 	CompanyName       string    `json:"company_name"`
@@ -20,14 +20,14 @@ type StockMarket struct {
 	ListingDate       time.Time `json:"listing_date"`
 }
 
-// Sector - сектор
+// Sector - sector
 type Sector struct {
 	Code        string `json:"code"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
 
-// CompanyInfo - информация о компании
+// CompanyInfo - company information
 type CompanyInfo struct {
 	Symbol            string    `json:"symbol"`
 	Name              string    `json:"name"`
@@ -51,7 +51,7 @@ type CompanyInfo struct {
 	IPODate           time.Time `json:"ipo_date"`
 }
 
-// Dividend - дивиденд
+// Dividend - dividend
 type Dividend struct {
 	Symbol      string    `json:"symbol"`
 	Amount      float64   `json:"amount"`
@@ -65,7 +65,7 @@ type Dividend struct {
 	BrokerID    string    `json:"broker_id"`
 }
 
-// CorporateAction - корпоративное действие
+// CorporateAction - corporate action
 type CorporateAction struct {
 	Symbol      string    `json:"symbol"`
 	Type        string    `json:"type"` // SPLIT, MERGER, SPINOFF, etc.
@@ -77,7 +77,7 @@ type CorporateAction struct {
 	BrokerID    string    `json:"broker_id"`
 }
 
-// Earnings - отчет о прибылях
+// Earnings - earnings report
 type Earnings struct {
 	Symbol          string    `json:"symbol"`
 	Period          string    `json:"period"`
@@ -90,27 +90,27 @@ type Earnings struct {
 	BrokerID        string    `json:"broker_id"`
 }
 
-// StockBroker - интерфейс для фондовых брокеров
+// StockBroker - interface for stock brokers
 type StockBroker interface {
 	Broker
 
-	// Специфичные методы для фондового рынка
+	// Specific methods for stock market
 	GetStockMarkets() ([]StockMarket, error)
 	GetSectors() ([]Sector, error)
 
-	// Подписка на акции
+	// Stock subscription
 	SubscribeStocks(ctx context.Context, symbols []string) error
 
-	// Получение информации о компаниях
+	// Company information retrieval
 	GetCompanyInfo(symbol string) (*CompanyInfo, error)
 
-	// Специфичные каналы для фондового рынка
+	// Specific channels for stock market
 	GetDividendChannel() <-chan Dividend
 	GetCorporateActionChannel() <-chan CorporateAction
 	GetEarningsChannel() <-chan Earnings
 }
 
-// StockBrokerFactory - фабрика для фондовых брокеров
+// StockBrokerFactory - factory for stock brokers
 type StockBrokerFactory interface {
 	Create(config BrokerConfig) (StockBroker, error)
 	GetSupportedBrokers() []string

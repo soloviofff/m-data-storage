@@ -35,7 +35,7 @@ type DatabaseConfig struct {
 	QuestDB QuestDBConfig `yaml:"questdb" env-prefix:"QUESTDB_"`
 }
 
-// SQLiteConfig - конфигурация SQLite
+// SQLiteConfig - SQLite configuration
 type SQLiteConfig struct {
 	Path            string        `yaml:"path" env:"PATH" envDefault:"./data/metadata.db"`
 	MaxOpenConns    int           `yaml:"max_open_conns" env:"MAX_OPEN_CONNS" envDefault:"10"`
@@ -45,7 +45,7 @@ type SQLiteConfig struct {
 	ForeignKeys     bool          `yaml:"foreign_keys" env:"FOREIGN_KEYS" envDefault:"true"`
 }
 
-// QuestDBConfig - конфигурация QuestDB
+// QuestDBConfig - QuestDB configuration
 type QuestDBConfig struct {
 	Host            string        `yaml:"host" env:"HOST" envDefault:"localhost"`
 	Port            int           `yaml:"port" env:"PORT" envDefault:"8812"`
@@ -76,7 +76,7 @@ type CORSConfig struct {
 	AllowedHeaders []string `yaml:"allowed_headers" env:"ALLOWED_HEADERS" envSeparator:"," envDefault:"Content-Type,Authorization,X-API-Key"`
 }
 
-// AuthConfig - конфигурация аутентификации
+// AuthConfig - authentication configuration
 type AuthConfig struct {
 	JWTSecret    string        `yaml:"jwt_secret" env:"JWT_SECRET"`
 	JWTExpiry    time.Duration `yaml:"jwt_expiry" env:"JWT_EXPIRY" envDefault:"24h"`
@@ -169,17 +169,17 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// IsDevelopment проверяет, запущено ли приложение в режиме разработки
+// IsDevelopment checks if the application is running in development mode
 func (c *Config) IsDevelopment() bool {
 	return c.App.Environment == "development"
 }
 
-// IsProduction проверяет, запущено ли приложение в продакшене
+// IsProduction checks if the application is running in production
 func (c *Config) IsProduction() bool {
 	return c.App.Environment == "production"
 }
 
-// GetDatabaseURL возвращает URL для подключения к QuestDB
+// GetDatabaseURL returns URL for QuestDB connection
 func (c *Config) GetDatabaseURL() string {
 	if c.Database.QuestDB.Username != "" && c.Database.QuestDB.Password != "" {
 		return fmt.Sprintf("postgresql://%s:%s@%s:%d/%s",

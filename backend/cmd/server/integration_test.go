@@ -13,39 +13,39 @@ import (
 )
 
 func TestServerIntegration(t *testing.T) {
-	// Создаем тестовую конфигурацию
+	// Create test configuration
 	cfg := createTestConfig()
 
-	// Создаем логгер
+	// Create logger
 	log, err := logger.New(cfg.Logging)
 	require.NoError(t, err)
 
-	// Тестируем инициализацию контейнера
+	// Test container initialization
 	ctx := context.Background()
 	container, err := initializeContainer(ctx, cfg, log)
 	require.NoError(t, err)
 	require.NotNil(t, container)
 
-	// Тестируем инициализацию HTTP сервера
+	// Test HTTP server initialization
 	httpServer, err := initializeHTTPServer(cfg, container, log)
 	require.NoError(t, err)
 	require.NotNil(t, httpServer)
 
-	// Проверяем, что сервер настроен правильно
+	// Check that server is configured correctly
 	assert.NotNil(t, httpServer)
 
-	// Завершаем работу контейнера
+	// Shutdown container
 	err = container.Shutdown()
 	require.NoError(t, err)
 }
 
 func TestConfigLoading(t *testing.T) {
-	// Тестируем загрузку конфигурации
+	// Test configuration loading
 	cfg, err := config.Load("")
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 
-	// Проверяем основные параметры
+	// Check basic parameters
 	assert.NotEmpty(t, cfg.App.Name)
 	assert.NotEmpty(t, cfg.App.Version)
 	assert.Greater(t, cfg.API.Port, 0)
@@ -53,7 +53,7 @@ func TestConfigLoading(t *testing.T) {
 	assert.Greater(t, cfg.API.WriteTimeout, time.Duration(0))
 }
 
-// Helper function для создания тестовой конфигурации
+// Helper function for creating test configuration
 func createTestConfig() *config.Config {
 	return &config.Config{
 		App: config.AppConfig{

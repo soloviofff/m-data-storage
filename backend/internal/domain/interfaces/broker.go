@@ -7,7 +7,7 @@ import (
 	"m-data-storage/internal/domain/entities"
 )
 
-// BrokerType - тип брокера
+// BrokerType - broker type
 type BrokerType string
 
 const (
@@ -15,7 +15,7 @@ const (
 	BrokerTypeStock  BrokerType = "stock"
 )
 
-// BrokerInfo - информация о брокере
+// BrokerInfo - broker information
 type BrokerInfo struct {
 	ID          string     `json:"id"`
 	Name        string     `json:"name"`
@@ -26,35 +26,35 @@ type BrokerInfo struct {
 	Features    []string   `json:"features"`
 }
 
-// Broker - базовый интерфейс для всех типов брокеров
+// Broker - base interface for all broker types
 type Broker interface {
-	// Основные методы подключения
+	// Basic connection methods
 	Connect(ctx context.Context) error
 	Disconnect() error
 	IsConnected() bool
 
-	// Информация о брокере
+	// Broker information
 	GetInfo() BrokerInfo
 	GetSupportedInstruments() []entities.InstrumentInfo
 
-	// Управление подписками
+	// Subscription management
 	Subscribe(ctx context.Context, instruments []entities.InstrumentSubscription) error
 	Unsubscribe(ctx context.Context, instruments []entities.InstrumentSubscription) error
 
-	// Получение каналов данных
+	// Data channel access
 	GetTickerChannel() <-chan entities.Ticker
 	GetCandleChannel() <-chan entities.Candle
 	GetOrderBookChannel() <-chan entities.OrderBook
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	Start(ctx context.Context) error
 	Stop() error
 
-	// Проверка здоровья
+	// Health check
 	Health() error
 }
 
-// ConnectionConfig - настройки подключения
+// ConnectionConfig - connection settings
 type ConnectionConfig struct {
 	WebSocketURL         string        `yaml:"websocket_url"`
 	RestAPIURL           string        `yaml:"rest_api_url"`
@@ -64,7 +64,7 @@ type ConnectionConfig struct {
 	MaxReconnectAttempts int           `yaml:"max_reconnect_attempts"`
 }
 
-// AuthConfig - настройки аутентификации
+// AuthConfig - authentication settings
 type AuthConfig struct {
 	APIKey     string `yaml:"api_key"`
 	SecretKey  string `yaml:"secret_key"`
@@ -72,7 +72,7 @@ type AuthConfig struct {
 	Sandbox    bool   `yaml:"sandbox"`
 }
 
-// DefaultsConfig - настройки по умолчанию
+// DefaultsConfig - default settings
 type DefaultsConfig struct {
 	OrderBookDepth    int           `yaml:"orderbook_depth"`
 	OrderBookInterval time.Duration `yaml:"orderbook_interval"`
@@ -80,14 +80,14 @@ type DefaultsConfig struct {
 	BatchSize         int           `yaml:"batch_size"`
 }
 
-// LimitsConfig - лимиты брокера
+// LimitsConfig - broker limits
 type LimitsConfig struct {
 	MaxSubscriptions  int `yaml:"max_subscriptions"`
 	RequestsPerSecond int `yaml:"requests_per_second"`
 	RequestsPerMinute int `yaml:"requests_per_minute"`
 }
 
-// BrokerConfig - конфигурация брокера
+// BrokerConfig - broker configuration
 type BrokerConfig struct {
 	ID         string                 `yaml:"id"`
 	Name       string                 `yaml:"name"`
@@ -100,28 +100,28 @@ type BrokerConfig struct {
 	Limits     LimitsConfig           `yaml:"limits"`
 }
 
-// BrokerFactory - фабрика для создания брокеров
+// BrokerFactory - factory for creating brokers
 type BrokerFactory interface {
 	CreateBroker(config BrokerConfig) (Broker, error)
 	GetSupportedTypes() []BrokerType
 }
 
-// BrokerManager - менеджер для управления брокерами
+// BrokerManager - manager for broker management
 type BrokerManager interface {
 	Initialize(ctx context.Context) error
 
-	// Управление брокерами
+	// Broker management
 	AddBroker(ctx context.Context, config BrokerConfig) error
 	RemoveBroker(ctx context.Context, brokerID string) error
 	GetBroker(id string) (Broker, error)
 	GetAllBrokers() map[string]Broker
 	ListBrokers() []BrokerInfo
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	StartAll(ctx context.Context) error
 	StopAll() error
 
-	// Мониторинг
+	// Monitoring
 	Health() map[string]error
 	HealthCheck() map[string]error // Deprecated: use Health() instead
 }

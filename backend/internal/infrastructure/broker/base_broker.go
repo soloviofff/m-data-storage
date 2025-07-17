@@ -12,51 +12,51 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// BaseBroker предоставляет базовую реализацию интерфейса Broker
+// BaseBroker provides base implementation of Broker interface
 type BaseBroker struct {
-	config       interfaces.BrokerConfig
-	logger       *logrus.Logger
-	connected    bool
-	mu           sync.RWMutex
-	
-	// Каналы для данных
+	config    interfaces.BrokerConfig
+	logger    *logrus.Logger
+	connected bool
+	mu        sync.RWMutex
+
+	// Data channels
 	tickerChan    chan entities.Ticker
 	candleChan    chan entities.Candle
 	orderBookChan chan entities.OrderBook
-	
-	// Управление подписками
+
+	// Subscription management
 	subscriptions map[string]entities.InstrumentSubscription
 	subMu         sync.RWMutex
-	
-	// Управление жизненным циклом
+
+	// Lifecycle management
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
-	
-	// Статистика
+
+	// Statistics
 	stats BrokerStats
 }
 
-// BrokerStats содержит статистику работы брокера
+// BrokerStats contains broker operation statistics
 type BrokerStats struct {
-	ConnectedAt       time.Time `json:"connected_at"`
-	LastDataReceived  time.Time `json:"last_data_received"`
-	TotalTickers      int64     `json:"total_tickers"`
-	TotalCandles      int64     `json:"total_candles"`
-	TotalOrderBooks   int64     `json:"total_orderbooks"`
-	ActiveSubscriptions int     `json:"active_subscriptions"`
-	ConnectionErrors  int64     `json:"connection_errors"`
-	DataErrors        int64     `json:"data_errors"`
+	ConnectedAt         time.Time `json:"connected_at"`
+	LastDataReceived    time.Time `json:"last_data_received"`
+	TotalTickers        int64     `json:"total_tickers"`
+	TotalCandles        int64     `json:"total_candles"`
+	TotalOrderBooks     int64     `json:"total_orderbooks"`
+	ActiveSubscriptions int       `json:"active_subscriptions"`
+	ConnectionErrors    int64     `json:"connection_errors"`
+	DataErrors          int64     `json:"data_errors"`
 }
 
-// NewBaseBroker создает новый базовый брокер
+// NewBaseBroker creates a new base broker
 func NewBaseBroker(config interfaces.BrokerConfig, logger *logrus.Logger) *BaseBroker {
 	if logger == nil {
 		logger = logrus.New()
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &BaseBroker{
 		config:        config,
 		logger:        logger,
@@ -71,68 +71,68 @@ func NewBaseBroker(config interfaces.BrokerConfig, logger *logrus.Logger) *BaseB
 	}
 }
 
-// Connect устанавливает соединение с брокером
+// Connect establishes connection to the broker
 func (b *BaseBroker) Connect(ctx context.Context) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	
+
 	if b.connected {
 		return nil
 	}
-	
+
 	b.logger.WithField("broker_id", b.config.ID).Info("Connecting to broker")
-	
-	// Базовая реализация - просто помечаем как подключенный
-	// Конкретные брокеры должны переопределить этот метод
+
+	// Base implementation - just mark as connected
+	// Concrete brokers should override this method
 	b.connected = true
 	b.stats.ConnectedAt = time.Now()
-	
+
 	b.logger.WithField("broker_id", b.config.ID).Info("Successfully connected to broker")
 	return nil
 }
 
-// Disconnect отключается от брокера
+// Disconnect disconnects from the broker
 func (b *BaseBroker) Disconnect() error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	
+
 	if !b.connected {
 		return nil
 	}
-	
+
 	b.logger.WithField("broker_id", b.config.ID).Info("Disconnecting from broker")
-	
-	// Отменяем контекст для остановки всех горутин
+
+	// Cancel context to stop all goroutines
 	b.cancel()
-	
-	// Ждем завершения всех горутин
+
+	// Wait for all goroutines to finish
 	b.wg.Wait()
-	
-	// Закрываем каналы
+
+	// Close channels
 	close(b.tickerChan)
 	close(b.candleChan)
 	close(b.orderBookChan)
-	
+
 	b.connected = false
-	
+
 	b.logger.WithField("broker_id", b.config.ID).Info("Successfully disconnected from broker")
 	return nil
 }
 
-// IsConnected возвращает статус соединения
+// IsConnected returns connection status
 func (b *BaseBroker) IsConnected() bool {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return b.connected
 }
 
-// GetInfo возвращает информацию о брокере
+// GetInfo returns broker information
 func (b *BaseBroker) GetInfo() interfaces.BrokerInfo {
 	status := "disconnected"
 	if b.IsConnected() {
 		status = "connected"
 	}
-	
+
 	return interfaces.BrokerInfo{
 		ID:          b.config.ID,
 		Name:        b.config.Name,
@@ -144,22 +144,22 @@ func (b *BaseBroker) GetInfo() interfaces.BrokerInfo {
 	}
 }
 
-// GetSupportedInstruments возвращает поддерживаемые инструменты
+// GetSupportedInstruments returns supported instruments
 func (b *BaseBroker) GetSupportedInstruments() []entities.InstrumentInfo {
-	// Базовая реализация возвращает пустой список
-	// Конкретные брокеры должны переопределить этот метод
+	// Base implementation returns empty list
+	// Concrete brokers should override this method
 	return []entities.InstrumentInfo{}
 }
 
-// Subscribe подписывается на инструменты
+// Subscribe subscribes to instruments
 func (b *BaseBroker) Subscribe(ctx context.Context, instruments []entities.InstrumentSubscription) error {
 	b.subMu.Lock()
 	defer b.subMu.Unlock()
-	
+
 	for _, instrument := range instruments {
 		key := fmt.Sprintf("%s_%s_%s", instrument.Symbol, instrument.Type, instrument.Market)
 		b.subscriptions[key] = instrument
-		
+
 		b.logger.WithFields(logrus.Fields{
 			"broker_id": b.config.ID,
 			"symbol":    instrument.Symbol,
@@ -167,20 +167,20 @@ func (b *BaseBroker) Subscribe(ctx context.Context, instruments []entities.Instr
 			"market":    instrument.Market,
 		}).Info("Subscribed to instrument")
 	}
-	
+
 	b.stats.ActiveSubscriptions = len(b.subscriptions)
 	return nil
 }
 
-// Unsubscribe отписывается от инструментов
+// Unsubscribe unsubscribes from instruments
 func (b *BaseBroker) Unsubscribe(ctx context.Context, instruments []entities.InstrumentSubscription) error {
 	b.subMu.Lock()
 	defer b.subMu.Unlock()
-	
+
 	for _, instrument := range instruments {
 		key := fmt.Sprintf("%s_%s_%s", instrument.Symbol, instrument.Type, instrument.Market)
 		delete(b.subscriptions, key)
-		
+
 		b.logger.WithFields(logrus.Fields{
 			"broker_id": b.config.ID,
 			"symbol":    instrument.Symbol,
@@ -188,50 +188,50 @@ func (b *BaseBroker) Unsubscribe(ctx context.Context, instruments []entities.Ins
 			"market":    instrument.Market,
 		}).Info("Unsubscribed from instrument")
 	}
-	
+
 	b.stats.ActiveSubscriptions = len(b.subscriptions)
 	return nil
 }
 
-// GetTickerChannel возвращает канал тикеров
+// GetTickerChannel returns ticker channel
 func (b *BaseBroker) GetTickerChannel() <-chan entities.Ticker {
 	return b.tickerChan
 }
 
-// GetCandleChannel возвращает канал свечей
+// GetCandleChannel returns candle channel
 func (b *BaseBroker) GetCandleChannel() <-chan entities.Candle {
 	return b.candleChan
 }
 
-// GetOrderBookChannel возвращает канал стаканов
+// GetOrderBookChannel returns order book channel
 func (b *BaseBroker) GetOrderBookChannel() <-chan entities.OrderBook {
 	return b.orderBookChan
 }
 
-// Start запускает брокер
+// Start starts the broker
 func (b *BaseBroker) Start(ctx context.Context) error {
 	if !b.IsConnected() {
 		if err := b.Connect(ctx); err != nil {
 			return fmt.Errorf("failed to connect: %w", err)
 		}
 	}
-	
+
 	b.logger.WithField("broker_id", b.config.ID).Info("Broker started")
 	return nil
 }
 
-// Stop останавливает брокер
+// Stop stops the broker
 func (b *BaseBroker) Stop() error {
 	return b.Disconnect()
 }
 
-// Health проверяет здоровье брокера
+// Health checks broker health
 func (b *BaseBroker) Health() error {
 	if !b.IsConnected() {
 		return fmt.Errorf("broker %s is not connected", b.config.ID)
 	}
-	
-	// Проверяем, не переполнены ли каналы
+
+	// Check if channels are not overflowing
 	if len(b.tickerChan) > cap(b.tickerChan)*9/10 {
 		return fmt.Errorf("ticker channel is nearly full")
 	}
@@ -241,22 +241,22 @@ func (b *BaseBroker) Health() error {
 	if len(b.orderBookChan) > cap(b.orderBookChan)*9/10 {
 		return fmt.Errorf("orderbook channel is nearly full")
 	}
-	
+
 	return nil
 }
 
-// GetStats возвращает статистику брокера
+// GetStats returns broker statistics
 func (b *BaseBroker) GetStats() BrokerStats {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	return b.stats
 }
 
-// GetSubscriptions возвращает активные подписки
+// GetSubscriptions returns active subscriptions
 func (b *BaseBroker) GetSubscriptions() map[string]entities.InstrumentSubscription {
 	b.subMu.RLock()
 	defer b.subMu.RUnlock()
-	
+
 	result := make(map[string]entities.InstrumentSubscription)
 	for k, v := range b.subscriptions {
 		result[k] = v
@@ -264,7 +264,7 @@ func (b *BaseBroker) GetSubscriptions() map[string]entities.InstrumentSubscripti
 	return result
 }
 
-// SendTicker отправляет тикер в канал (для использования в наследниках)
+// SendTicker sends ticker to channel (for use in derived classes)
 func (b *BaseBroker) SendTicker(ticker entities.Ticker) {
 	select {
 	case b.tickerChan <- ticker:
@@ -276,7 +276,7 @@ func (b *BaseBroker) SendTicker(ticker entities.Ticker) {
 	}
 }
 
-// SendCandle отправляет свечу в канал (для использования в наследниках)
+// SendCandle sends candle to channel (for use in derived classes)
 func (b *BaseBroker) SendCandle(candle entities.Candle) {
 	select {
 	case b.candleChan <- candle:
@@ -288,7 +288,7 @@ func (b *BaseBroker) SendCandle(candle entities.Candle) {
 	}
 }
 
-// SendOrderBook отправляет стакан в канал (для использования в наследниках)
+// SendOrderBook sends order book to channel (for use in derived classes)
 func (b *BaseBroker) SendOrderBook(orderBook entities.OrderBook) {
 	select {
 	case b.orderBookChan <- orderBook:
