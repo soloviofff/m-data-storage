@@ -164,26 +164,36 @@ func TestInstrumentManagerService_AddInstrument(t *testing.T) {
 
 	// Test validation error
 	t.Run("validation error", func(t *testing.T) {
-		mockValidator.On("ValidateInstrument", instrument).Return(fmt.Errorf("validation failed"))
+		// Create fresh mocks for this test
+		mockValidatorLocal := &MockDataValidator{}
+		mockStorageLocal := &MockMetadataStorage{}
+		serviceLocal := NewInstrumentManagerService(mockStorageLocal, nil, mockValidatorLocal, logger)
 
-		err := service.AddInstrument(ctx, instrument)
+		mockValidatorLocal.On("ValidateInstrument", instrument).Return(fmt.Errorf("validation failed"))
+
+		err := serviceLocal.AddInstrument(ctx, instrument)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "instrument validation failed")
-		mockValidator.AssertExpectations(t)
+		mockValidatorLocal.AssertExpectations(t)
 	})
 
 	// Test storage error
 	t.Run("storage error", func(t *testing.T) {
-		mockValidator.On("ValidateInstrument", instrument).Return(nil)
-		mockStorage.On("SaveInstrument", ctx, instrument).Return(fmt.Errorf("storage error"))
+		// Create fresh mocks for this test
+		mockValidatorLocal := &MockDataValidator{}
+		mockStorageLocal := &MockMetadataStorage{}
+		serviceLocal := NewInstrumentManagerService(mockStorageLocal, nil, mockValidatorLocal, logger)
 
-		err := service.AddInstrument(ctx, instrument)
+		mockValidatorLocal.On("ValidateInstrument", instrument).Return(nil)
+		mockStorageLocal.On("SaveInstrument", ctx, instrument).Return(fmt.Errorf("storage error"))
+
+		err := serviceLocal.AddInstrument(ctx, instrument)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to save instrument")
-		mockValidator.AssertExpectations(t)
-		mockStorage.AssertExpectations(t)
+		mockValidatorLocal.AssertExpectations(t)
+		mockStorageLocal.AssertExpectations(t)
 	})
 }
 
@@ -257,7 +267,7 @@ func TestInstrumentManagerService_GetInstrument_NilStorage(t *testing.T) {
 	result, err := service.GetInstrument(ctx, "BTCUSDT")
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "MetadataStorage not available")
+	assert.Contains(t, err.Error(), "metadata storage not available")
 }
 
 func TestInstrumentManagerService_AddSubscription(t *testing.T) {
@@ -306,38 +316,51 @@ func TestInstrumentManagerService_AddSubscription(t *testing.T) {
 
 	// Test validation error
 	t.Run("validation error", func(t *testing.T) {
-		mockValidator.On("ValidateSubscription", subscription).Return(fmt.Errorf("validation failed"))
+		// Create fresh mocks for this test
+		mockValidatorLocal := &MockDataValidator{}
+		mockStorageLocal := &MockMetadataStorage{}
+		serviceLocal := NewInstrumentManagerService(mockStorageLocal, nil, mockValidatorLocal, logger)
 
-		err := service.AddSubscription(ctx, subscription)
+		mockValidatorLocal.On("ValidateSubscription", subscription).Return(fmt.Errorf("validation failed"))
+
+		err := serviceLocal.AddSubscription(ctx, subscription)
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "subscription validation failed")
-		mockValidator.AssertExpectations(t)
+		mockValidatorLocal.AssertExpectations(t)
 	})
 }
 
 func TestInstrumentManagerService_Health(t *testing.T) {
-	mockStorage := &MockMetadataStorage{}
-	mockPipeline := &MockDataPipeline{}
 	logger := logrus.New()
-
-	service := NewInstrumentManagerService(mockStorage, mockPipeline, nil, logger)
 
 	// Test healthy state
 	t.Run("healthy state", func(t *testing.T) {
-		mockStorage.On("Health").Return(nil)
-		mockPipeline.On("Health").Return(nil)
+		// Create fresh mocks for this test
+		mockStorageLocal := &MockMetadataStorage{}
+		mockPipelineLocal := &MockDataPipeline{}
+		serviceLocal := NewInstrumentManagerService(mockStorageLocal, mockPipelineLocal, nil, logger)
 
-		err := service.Health()
+		// Set the service as running manually to avoid Start/Stop complexity
+		serviceLocal.isRunning = true
+
+		mockStorageLocal.On("Health").Return(nil)
+		mockPipelineLocal.On("Health").Return(nil)
+
+		err := serviceLocal.Health()
 
 		assert.NoError(t, err)
-		mockStorage.AssertExpectations(t)
-		mockPipeline.AssertExpectations(t)
+		mockStorageLocal.AssertExpectations(t)
+		mockPipelineLocal.AssertExpectations(t)
 	})
 
 	// Test with nil dependencies
 	t.Run("nil dependencies", func(t *testing.T) {
 		serviceWithNil := NewInstrumentManagerService(nil, nil, nil, logger)
+
+		// Set the service as running manually
+		serviceWithNil.isRunning = true
+
 		err := serviceWithNil.Health()
 		assert.NoError(t, err)
 	})

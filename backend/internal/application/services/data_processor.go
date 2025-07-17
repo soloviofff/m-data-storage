@@ -12,32 +12,32 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// DataProcessorService реализует интерфейс DataProcessor
+// DataProcessorService implements the DataProcessor interface
 type DataProcessorService struct {
 	storage   interfaces.StorageManager
 	validator interfaces.DataValidator
 	logger    *logrus.Logger
 
-	// Каналы для пакетной обработки
+	// Channels for batch processing
 	tickerChan    chan entities.Ticker
 	candleChan    chan entities.Candle
 	orderBookChan chan entities.OrderBook
 
-	// Настройки пакетной обработки
+	// Batch processing settings
 	batchSize     int
 	flushInterval time.Duration
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	// Статистика
+	// Statistics
 	stats ProcessorStats
 	mutex sync.RWMutex
 }
 
-// ProcessorStats - статистика процессора данных
+// ProcessorStats - data processor statistics
 type ProcessorStats struct {
 	ProcessedTickers    int64     `json:"processed_tickers"`
 	ProcessedCandles    int64     `json:"processed_candles"`
@@ -46,7 +46,7 @@ type ProcessorStats struct {
 	LastProcessed       time.Time `json:"last_processed"`
 }
 
-// NewDataProcessorService создает новый сервис обработки данных
+// NewDataProcessorService creates a new data processing service
 func NewDataProcessorService(
 	storage interfaces.StorageManager,
 	validator interfaces.DataValidator,
@@ -64,11 +64,11 @@ func NewDataProcessorService(
 	}
 }
 
-// Start запускает сервис обработки данных
+// Start starts the data processing service
 func (s *DataProcessorService) Start(ctx context.Context) error {
 	s.ctx, s.cancel = context.WithCancel(ctx)
 
-	// Запускаем воркеры для пакетной обработки
+	// Start workers for batch processing
 	s.wg.Add(3)
 	go s.tickerWorker()
 	go s.candleWorker()
@@ -78,25 +78,25 @@ func (s *DataProcessorService) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop останавливает сервис обработки данных
+// Stop stops the data processing service
 func (s *DataProcessorService) Stop() error {
 	if s.cancel != nil {
 		s.cancel()
 	}
 
-	// Закрываем каналы
+	// Close channels
 	close(s.tickerChan)
 	close(s.candleChan)
 	close(s.orderBookChan)
 
-	// Ждем завершения воркеров
+	// Wait for workers to finish
 	s.wg.Wait()
 
 	s.logger.Info("Data processor service stopped")
 	return nil
 }
 
-// ProcessTicker обрабатывает один тикер
+// ProcessTicker processes a single ticker
 func (s *DataProcessorService) ProcessTicker(ctx context.Context, ticker entities.Ticker) error {
 	if err := s.validator.ValidateTicker(ticker); err != nil {
 		s.incrementErrors()
@@ -114,7 +114,7 @@ func (s *DataProcessorService) ProcessTicker(ctx context.Context, ticker entitie
 	}
 }
 
-// ProcessCandle обрабатывает одну свечу
+// ProcessCandle processes a single candle
 func (s *DataProcessorService) ProcessCandle(ctx context.Context, candle entities.Candle) error {
 	if err := s.validator.ValidateCandle(candle); err != nil {
 		s.incrementErrors()
@@ -132,7 +132,7 @@ func (s *DataProcessorService) ProcessCandle(ctx context.Context, candle entitie
 	}
 }
 
-// ProcessOrderBook обрабатывает один ордербук
+// ProcessOrderBook processes a single orderbook
 func (s *DataProcessorService) ProcessOrderBook(ctx context.Context, orderBook entities.OrderBook) error {
 	if err := s.validator.ValidateOrderBook(orderBook); err != nil {
 		s.incrementErrors()
@@ -150,9 +150,9 @@ func (s *DataProcessorService) ProcessOrderBook(ctx context.Context, orderBook e
 	}
 }
 
-// ProcessTickerBatch обрабатывает пакет тикеров
+// ProcessTickerBatch processes a batch of tickers
 func (s *DataProcessorService) ProcessTickerBatch(ctx context.Context, tickers []entities.Ticker) error {
-	// Валидируем все тикеры
+	// Validate all tickers
 	for _, ticker := range tickers {
 		if err := s.validator.ValidateTicker(ticker); err != nil {
 			s.incrementErrors()
@@ -160,7 +160,7 @@ func (s *DataProcessorService) ProcessTickerBatch(ctx context.Context, tickers [
 		}
 	}
 
-	// Сохраняем в хранилище
+	// Save to storage
 	if err := s.storage.SaveTickers(ctx, tickers); err != nil {
 		s.incrementErrors()
 		return errors.Wrap(err, "failed to save tickers")
@@ -170,9 +170,9 @@ func (s *DataProcessorService) ProcessTickerBatch(ctx context.Context, tickers [
 	return nil
 }
 
-// ProcessCandleBatch обрабатывает пакет свечей
+// ProcessCandleBatch processes a batch of candles
 func (s *DataProcessorService) ProcessCandleBatch(ctx context.Context, candles []entities.Candle) error {
-	// Валидируем все свечи
+	// Validate all candles
 	for _, candle := range candles {
 		if err := s.validator.ValidateCandle(candle); err != nil {
 			s.incrementErrors()
@@ -180,7 +180,7 @@ func (s *DataProcessorService) ProcessCandleBatch(ctx context.Context, candles [
 		}
 	}
 
-	// Сохраняем в хранилище
+	// Save to storage
 	if err := s.storage.SaveCandles(ctx, candles); err != nil {
 		s.incrementErrors()
 		return errors.Wrap(err, "failed to save candles")
@@ -190,9 +190,9 @@ func (s *DataProcessorService) ProcessCandleBatch(ctx context.Context, candles [
 	return nil
 }
 
-// ProcessOrderBookBatch обрабатывает пакет ордербуков
+// ProcessOrderBookBatch processes a batch of orderbooks
 func (s *DataProcessorService) ProcessOrderBookBatch(ctx context.Context, orderBooks []entities.OrderBook) error {
-	// Валидируем все ордербуки
+	// Validate all orderbooks
 	for _, orderBook := range orderBooks {
 		if err := s.validator.ValidateOrderBook(orderBook); err != nil {
 			s.incrementErrors()
@@ -200,7 +200,7 @@ func (s *DataProcessorService) ProcessOrderBookBatch(ctx context.Context, orderB
 		}
 	}
 
-	// Сохраняем в хранилище
+	// Save to storage
 	if err := s.storage.SaveOrderBooks(ctx, orderBooks); err != nil {
 		s.incrementErrors()
 		return errors.Wrap(err, "failed to save orderbooks")
@@ -210,9 +210,9 @@ func (s *DataProcessorService) ProcessOrderBookBatch(ctx context.Context, orderB
 	return nil
 }
 
-// Health проверяет здоровье сервиса
+// Health checks the service health
 func (s *DataProcessorService) Health() error {
-	// Проверяем состояние каналов
+	// Check channel states
 	if len(s.tickerChan) > cap(s.tickerChan)*9/10 {
 		return errors.New("ticker channel is nearly full")
 	}
@@ -226,14 +226,14 @@ func (s *DataProcessorService) Health() error {
 	return nil
 }
 
-// GetStats возвращает статистику процессора
+// GetStats returns processor statistics
 func (s *DataProcessorService) GetStats() ProcessorStats {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.stats
 }
 
-// tickerWorker обрабатывает тикеры в пакетном режиме
+// tickerWorker processes tickers in batch mode
 func (s *DataProcessorService) tickerWorker() {
 	defer s.wg.Done()
 
@@ -245,7 +245,7 @@ func (s *DataProcessorService) tickerWorker() {
 		select {
 		case data, ok := <-s.tickerChan:
 			if !ok {
-				// Канал закрыт, обрабатываем оставшиеся данные
+				// Channel closed, process remaining data
 				if len(batch) > 0 {
 					s.processBatch(batch, "ticker")
 				}
@@ -270,7 +270,7 @@ func (s *DataProcessorService) tickerWorker() {
 	}
 }
 
-// candleWorker обрабатывает свечи в пакетном режиме
+// candleWorker processes candles in batch mode
 func (s *DataProcessorService) candleWorker() {
 	defer s.wg.Done()
 
@@ -306,7 +306,7 @@ func (s *DataProcessorService) candleWorker() {
 	}
 }
 
-// orderBookWorker обрабатывает ордербуки в пакетном режиме
+// orderBookWorker processes orderbooks in batch mode
 func (s *DataProcessorService) orderBookWorker() {
 	defer s.wg.Done()
 
@@ -342,7 +342,7 @@ func (s *DataProcessorService) orderBookWorker() {
 	}
 }
 
-// processBatch обрабатывает пакет тикеров
+// processBatch processes a batch of tickers
 func (s *DataProcessorService) processBatch(batch []entities.Ticker, dataType string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -356,7 +356,7 @@ func (s *DataProcessorService) processBatch(batch []entities.Ticker, dataType st
 	s.updateStats(len(batch), 0, 0)
 }
 
-// processCandleBatch обрабатывает пакет свечей
+// processCandleBatch processes a batch of candles
 func (s *DataProcessorService) processCandleBatch(batch []entities.Candle) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -370,7 +370,7 @@ func (s *DataProcessorService) processCandleBatch(batch []entities.Candle) {
 	s.updateStats(0, len(batch), 0)
 }
 
-// processOrderBookBatch обрабатывает пакет ордербуков
+// processOrderBookBatch processes a batch of orderbooks
 func (s *DataProcessorService) processOrderBookBatch(batch []entities.OrderBook) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -384,7 +384,7 @@ func (s *DataProcessorService) processOrderBookBatch(batch []entities.OrderBook)
 	s.updateStats(0, 0, len(batch))
 }
 
-// updateStats обновляет статистику
+// updateStats updates statistics
 func (s *DataProcessorService) updateStats(tickers, candles, orderBooks int) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -395,7 +395,7 @@ func (s *DataProcessorService) updateStats(tickers, candles, orderBooks int) {
 	s.stats.LastProcessed = time.Now()
 }
 
-// incrementErrors увеличивает счетчик ошибок
+// incrementErrors increments the error counter
 func (s *DataProcessorService) incrementErrors() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

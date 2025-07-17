@@ -5,13 +5,13 @@ import (
 	"time"
 )
 
-// PriceLevel представляет уровень цены в ордербуке
+// PriceLevel represents a price level in the order book
 type PriceLevel struct {
 	Price    float64 `json:"price"`
 	Quantity float64 `json:"quantity"`
 }
 
-// OrderBook представляет ордербук с поддержкой разных типов рынков
+// OrderBook represents order book with support for different market types
 type OrderBook struct {
 	Symbol    string         `json:"symbol"`
 	Bids      []PriceLevel   `json:"bids"`
@@ -21,12 +21,12 @@ type OrderBook struct {
 	Timestamp time.Time      `json:"timestamp"`
 	BrokerID  string         `json:"broker_id"`
 
-	// Дополнительные поля
+	// Additional fields
 	LastUpdateID int64     `json:"last_update_id,omitempty"`
 	EventTime    time.Time `json:"event_time,omitempty"`
 }
 
-// IsValid проверяет валидность ордербука
+// IsValid checks order book validity
 func (ob *OrderBook) IsValid() bool {
 	if ob.Symbol == "" {
 		return false
@@ -41,7 +41,7 @@ func (ob *OrderBook) IsValid() bool {
 		return false
 	}
 
-	// Проверяем валидность уровней цен
+	// Check price levels validity
 	for _, bid := range ob.Bids {
 		if bid.Price <= 0 || bid.Quantity <= 0 {
 			return false
@@ -56,13 +56,13 @@ func (ob *OrderBook) IsValid() bool {
 	return true
 }
 
-// GetBestBid возвращает лучшую цену покупки
+// GetBestBid returns best bid price
 func (ob *OrderBook) GetBestBid() *PriceLevel {
 	if len(ob.Bids) == 0 {
 		return nil
 	}
 
-	// Находим максимальную цену среди bids
+	// Find maximum price among bids
 	best := ob.Bids[0]
 	for _, bid := range ob.Bids[1:] {
 		if bid.Price > best.Price {
@@ -72,13 +72,13 @@ func (ob *OrderBook) GetBestBid() *PriceLevel {
 	return &best
 }
 
-// GetBestAsk возвращает лучшую цену продажи
+// GetBestAsk returns best ask price
 func (ob *OrderBook) GetBestAsk() *PriceLevel {
 	if len(ob.Asks) == 0 {
 		return nil
 	}
 
-	// Находим минимальную цену среди asks
+	// Find minimum price among asks
 	best := ob.Asks[0]
 	for _, ask := range ob.Asks[1:] {
 		if ask.Price < best.Price {
@@ -88,7 +88,7 @@ func (ob *OrderBook) GetBestAsk() *PriceLevel {
 	return &best
 }
 
-// GetSpread возвращает спред между лучшими ценами
+// GetSpread returns spread between best prices
 func (ob *OrderBook) GetSpread() float64 {
 	bestBid := ob.GetBestBid()
 	bestAsk := ob.GetBestAsk()
@@ -100,7 +100,7 @@ func (ob *OrderBook) GetSpread() float64 {
 	return bestAsk.Price - bestBid.Price
 }
 
-// GetMidPrice возвращает среднюю цену
+// GetMidPrice returns mid price
 func (ob *OrderBook) GetMidPrice() float64 {
 	bestBid := ob.GetBestBid()
 	bestAsk := ob.GetBestAsk()
@@ -112,27 +112,27 @@ func (ob *OrderBook) GetMidPrice() float64 {
 	return (bestBid.Price + bestAsk.Price) / 2
 }
 
-// SortBids сортирует bids по убыванию цены
+// SortBids sorts bids by descending price
 func (ob *OrderBook) SortBids() {
 	sort.Slice(ob.Bids, func(i, j int) bool {
 		return ob.Bids[i].Price > ob.Bids[j].Price
 	})
 }
 
-// SortAsks сортирует asks по возрастанию цены
+// SortAsks sorts asks by ascending price
 func (ob *OrderBook) SortAsks() {
 	sort.Slice(ob.Asks, func(i, j int) bool {
 		return ob.Asks[i].Price < ob.Asks[j].Price
 	})
 }
 
-// Sort сортирует и bids, и asks
+// Sort sorts both bids and asks
 func (ob *OrderBook) Sort() {
 	ob.SortBids()
 	ob.SortAsks()
 }
 
-// GetTotalBidVolume возвращает общий объем заявок на покупку
+// GetTotalBidVolume returns total bid volume
 func (ob *OrderBook) GetTotalBidVolume() float64 {
 	total := 0.0
 	for _, bid := range ob.Bids {
@@ -141,7 +141,7 @@ func (ob *OrderBook) GetTotalBidVolume() float64 {
 	return total
 }
 
-// GetTotalAskVolume возвращает общий объем заявок на продажу
+// GetTotalAskVolume returns total ask volume
 func (ob *OrderBook) GetTotalAskVolume() float64 {
 	total := 0.0
 	for _, ask := range ob.Asks {
@@ -150,7 +150,7 @@ func (ob *OrderBook) GetTotalAskVolume() float64 {
 	return total
 }
 
-// GetDepth возвращает глубину ордербука (количество уровней)
+// GetDepth returns order book depth (number of levels)
 func (ob *OrderBook) GetDepth() (bidDepth, askDepth int) {
 	return len(ob.Bids), len(ob.Asks)
 }

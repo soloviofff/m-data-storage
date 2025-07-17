@@ -1,10 +1,10 @@
-# Конфигурация брокера Binance
+# Binance Broker Configuration
 broker_id: "binance"
 name: "Binance"
 type: "crypto"
 enabled: true
 
-# Настройки подключения
+# Connection Settings
 connection:
   base_url: "https://api.binance.com"
   websocket_url: "wss://stream.binance.com:9443/ws"
@@ -13,50 +13,50 @@ connection:
     requests_per_minute: 1200
     weight_per_minute: 6000
 
-# Аутентификация (опционально для публичных данных)
+# Authentication (optional for public data)
 auth:
   api_key: ""
   secret_key: ""
   passphrase: ""
 
-# Поддерживаемые рынки
+# Supported Markets
 markets:
   - "spot"
   - "futures"
 
-# Поддерживаемые типы данных
+# Supported Data Types
 data_types:
   - "ticker"
   - "candle"
   - "orderbook"
 
-# Настройки подписок
+# Subscription Settings
 subscriptions:
-  # Максимальное количество символов в одном WebSocket соединении
+  # Maximum number of symbols in one WebSocket connection
   max_symbols_per_connection: 200
-  
-  # Автоматическое переподключение
+
+  # Automatic reconnection
   auto_reconnect: true
   reconnect_delay: "5s"
   max_reconnects: 10
-  
-  # Ping/pong для поддержания соединения
+
+  # Ping/pong for connection maintenance
   ping_interval: "30s"
   pong_timeout: "10s"
 
-# Маппинг символов (если нужно)
+# Symbol Mapping (if needed)
 symbol_mapping:
-  # Внутренний символ: Символ брокера
+  # Internal symbol: Broker symbol
   "BTC/USDT": "BTCUSDT"
   "ETH/USDT": "ETHUSDT"
 
-# Настройки для разных типов данных
+# Settings for different data types
 ticker_config:
-  # Интервал обновления тикеров (если поддерживается)
+  # Ticker update interval (if supported)
   update_interval: "1s"
 
 candle_config:
-  # Поддерживаемые таймфреймы
+  # Supported timeframes
   supported_timeframes:
     - "1s"
     - "1m"
@@ -76,30 +76,30 @@ candle_config:
     - "1M"
 
 orderbook_config:
-  # Глубина ордербука
+  # Orderbook depth
   depth: 20
-  # Интервал обновления
+  # Update interval
   update_interval: "100ms"
 
-# Настройки для фьючерсов
+# Futures settings
 futures_config:
-  # Дополнительные данные для фьючерсов
+  # Additional data for futures
   funding_rate: true
   mark_price: true
   open_interest: true
 
-# Обработка ошибок
+# Error handling
 error_handling:
-  # Максимальное количество ошибок подряд перед отключением
+  # Maximum number of consecutive errors before disconnection
   max_consecutive_errors: 5
-  # Задержка после ошибки
+  # Delay after error
   error_delay: "1s"
-  # Логировать все ошибки
+  # Log all errors
   log_all_errors: true
 
-# Мониторинг
+# Monitoring
 monitoring:
-  # Проверка здоровья соединения
+  # Connection health check
   health_check_interval: "30s"
   # Таймаут для проверки здоровья
   health_check_timeout: "10s"

@@ -13,32 +13,32 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// MockCryptoBroker реализует интерфейс CryptoBroker для тестирования
+// MockCryptoBroker implements CryptoBroker interface for testing
 type MockCryptoBroker struct {
 	*BaseBroker
-	
-	// Специфичные каналы для криптобирж
-	fundingRateChan   chan interfaces.FundingRate
-	markPriceChan     chan interfaces.MarkPrice
-	liquidationChan   chan interfaces.Liquidation
-	
-	// Данные для симуляции
+
+	// Specific channels for crypto exchanges
+	fundingRateChan chan interfaces.FundingRate
+	markPriceChan   chan interfaces.MarkPrice
+	liquidationChan chan interfaces.Liquidation
+
+	// Data for simulation
 	spotMarkets    []interfaces.SpotMarket
 	futuresMarkets []interfaces.FuturesMarket
 	contractInfos  map[string]*interfaces.ContractInfo
-	
-	// Генератор данных
+
+	// Data generator
 	dataGenerator *CryptoDataGenerator
-	
-	// Управление симуляцией
+
+	// Simulation control
 	simulationRunning bool
 	simulationMu      sync.RWMutex
 }
 
-// NewMockCryptoBroker создает новый mock криптоброкер
+// NewMockCryptoBroker creates a new mock crypto broker
 func NewMockCryptoBroker(config interfaces.BrokerConfig, logger *logrus.Logger) *MockCryptoBroker {
 	baseBroker := NewBaseBroker(config, logger)
-	
+
 	mock := &MockCryptoBroker{
 		BaseBroker:      baseBroker,
 		fundingRateChan: make(chan interfaces.FundingRate, config.Defaults.BufferSize),
@@ -46,19 +46,19 @@ func NewMockCryptoBroker(config interfaces.BrokerConfig, logger *logrus.Logger) 
 		liquidationChan: make(chan interfaces.Liquidation, config.Defaults.BufferSize),
 		contractInfos:   make(map[string]*interfaces.ContractInfo),
 	}
-	
-	// Инициализируем тестовые данные
+
+	// Initialize test data
 	mock.initializeTestData()
-	
-	// Создаем генератор данных
+
+	// Create data generator
 	mock.dataGenerator = NewCryptoDataGenerator(mock.spotMarkets, mock.futuresMarkets)
-	
+
 	return mock
 }
 
-// initializeTestData инициализирует тестовые рынки и контракты
+// initializeTestData initializes test markets and contracts
 func (m *MockCryptoBroker) initializeTestData() {
-	// Спот рынки
+	// Spot markets
 	m.spotMarkets = []interfaces.SpotMarket{
 		{
 			Symbol:      "BTCUSDT",
@@ -100,8 +100,8 @@ func (m *MockCryptoBroker) initializeTestData() {
 			MinNotional: 10,
 		},
 	}
-	
-	// Фьючерс рынки
+
+	// Futures markets
 	m.futuresMarkets = []interfaces.FuturesMarket{
 		{
 			Symbol:                "BTCUSDT",
@@ -130,8 +130,8 @@ func (m *MockCryptoBroker) initializeTestData() {
 			SettlePlan:            0,
 		},
 	}
-	
-	// Информация о контрактах
+
+	// Contract information
 	for _, market := range m.futuresMarkets {
 		m.contractInfos[market.Symbol] = &interfaces.ContractInfo{
 			Symbol:                market.Symbol,
@@ -147,20 +147,20 @@ func (m *MockCryptoBroker) initializeTestData() {
 	}
 }
 
-// GetSpotMarkets возвращает список спот рынков
+// GetSpotMarkets returns list of spot markets
 func (m *MockCryptoBroker) GetSpotMarkets() ([]interfaces.SpotMarket, error) {
 	return m.spotMarkets, nil
 }
 
-// GetFuturesMarkets возвращает список фьючерс рынков
+// GetFuturesMarkets returns list of futures markets
 func (m *MockCryptoBroker) GetFuturesMarkets() ([]interfaces.FuturesMarket, error) {
 	return m.futuresMarkets, nil
 }
 
-// SubscribeSpot подписывается на спот рынки
+// SubscribeSpot subscribes to spot markets
 func (m *MockCryptoBroker) SubscribeSpot(ctx context.Context, symbols []string) error {
 	subscriptions := make([]entities.InstrumentSubscription, 0, len(symbols))
-	
+
 	for _, symbol := range symbols {
 		subscriptions = append(subscriptions, entities.InstrumentSubscription{
 			Symbol: symbol,
@@ -168,14 +168,14 @@ func (m *MockCryptoBroker) SubscribeSpot(ctx context.Context, symbols []string) 
 			Market: entities.MarketTypeSpot,
 		})
 	}
-	
+
 	return m.Subscribe(ctx, subscriptions)
 }
 
 // SubscribeFutures подписывается на фьючерс рынки
 func (m *MockCryptoBroker) SubscribeFutures(ctx context.Context, symbols []string) error {
 	subscriptions := make([]entities.InstrumentSubscription, 0, len(symbols))
-	
+
 	for _, symbol := range symbols {
 		subscriptions = append(subscriptions, entities.InstrumentSubscription{
 			Symbol: symbol,
@@ -183,7 +183,7 @@ func (m *MockCryptoBroker) SubscribeFutures(ctx context.Context, symbols []strin
 			Market: entities.MarketTypeFutures,
 		})
 	}
-	
+
 	return m.Subscribe(ctx, subscriptions)
 }
 
@@ -213,7 +213,7 @@ func (m *MockCryptoBroker) GetLiquidationChannel() <-chan interfaces.Liquidation
 // GetSupportedInstruments возвращает список поддерживаемых инструментов
 func (m *MockCryptoBroker) GetSupportedInstruments() []entities.InstrumentInfo {
 	instruments := make([]entities.InstrumentInfo, 0, len(m.spotMarkets)+len(m.futuresMarkets))
-	
+
 	// Добавляем спот инструменты
 	for _, market := range m.spotMarkets {
 		instruments = append(instruments, entities.InstrumentInfo{
@@ -231,7 +231,7 @@ func (m *MockCryptoBroker) GetSupportedInstruments() []entities.InstrumentInfo {
 			QuantityPrecision: 8,
 		})
 	}
-	
+
 	// Добавляем фьючерс инструменты
 	for _, market := range m.futuresMarkets {
 		instruments = append(instruments, entities.InstrumentInfo{
@@ -245,7 +245,7 @@ func (m *MockCryptoBroker) GetSupportedInstruments() []entities.InstrumentInfo {
 			QuantityPrecision: market.BaseAssetPrecision,
 		})
 	}
-	
+
 	return instruments
 }
 
@@ -254,15 +254,15 @@ func (m *MockCryptoBroker) Start(ctx context.Context) error {
 	if err := m.BaseBroker.Start(ctx); err != nil {
 		return err
 	}
-	
+
 	m.simulationMu.Lock()
 	m.simulationRunning = true
 	m.simulationMu.Unlock()
-	
+
 	// Запускаем генерацию данных
 	m.wg.Add(1)
 	go m.runDataSimulation()
-	
+
 	return nil
 }
 
@@ -271,17 +271,17 @@ func (m *MockCryptoBroker) Stop() error {
 	m.simulationMu.Lock()
 	m.simulationRunning = false
 	m.simulationMu.Unlock()
-	
+
 	return m.BaseBroker.Stop()
 }
 
 // runDataSimulation запускает симуляцию рыночных данных
 func (m *MockCryptoBroker) runDataSimulation() {
 	defer m.wg.Done()
-	
+
 	ticker := time.NewTicker(100 * time.Millisecond) // Генерируем данные каждые 100мс
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-m.ctx.Done():
@@ -290,11 +290,11 @@ func (m *MockCryptoBroker) runDataSimulation() {
 			m.simulationMu.RLock()
 			running := m.simulationRunning
 			m.simulationMu.RUnlock()
-			
+
 			if !running {
 				return
 			}
-			
+
 			m.generateMarketData()
 		}
 	}
@@ -303,7 +303,7 @@ func (m *MockCryptoBroker) runDataSimulation() {
 // generateMarketData генерирует случайные рыночные данные
 func (m *MockCryptoBroker) generateMarketData() {
 	now := time.Now()
-	
+
 	// Генерируем тикеры для всех активных подписок
 	m.subMu.RLock()
 	for _, subscription := range m.subscriptions {
@@ -312,7 +312,7 @@ func (m *MockCryptoBroker) generateMarketData() {
 			ticker.BrokerID = m.config.ID
 			m.SendTicker(*ticker)
 		}
-		
+
 		// Иногда генерируем свечи
 		if rand.Float32() < 0.1 { // 10% вероятность
 			if candle := m.dataGenerator.GenerateCandle(subscription.Symbol, subscription.Market, now); candle != nil {
@@ -320,7 +320,7 @@ func (m *MockCryptoBroker) generateMarketData() {
 				m.SendCandle(*candle)
 			}
 		}
-		
+
 		// Иногда генерируем стаканы
 		if rand.Float32() < 0.05 { // 5% вероятность
 			if orderBook := m.dataGenerator.GenerateOrderBook(subscription.Symbol, subscription.Market, now); orderBook != nil {
@@ -328,7 +328,7 @@ func (m *MockCryptoBroker) generateMarketData() {
 				m.SendOrderBook(*orderBook)
 			}
 		}
-		
+
 		// Для фьючерсов генерируем дополнительные данные
 		if subscription.Market == entities.MarketTypeFutures {
 			// Ставки финансирования
@@ -337,14 +337,14 @@ func (m *MockCryptoBroker) generateMarketData() {
 				fundingRate.BrokerID = m.config.ID
 				m.sendFundingRate(fundingRate)
 			}
-			
+
 			// Маркировочные цены
 			if rand.Float32() < 0.05 { // 5% вероятность
 				markPrice := m.dataGenerator.GenerateMarkPrice(subscription.Symbol, now)
 				markPrice.BrokerID = m.config.ID
 				m.sendMarkPrice(markPrice)
 			}
-			
+
 			// Ликвидации
 			if rand.Float32() < 0.01 { // 1% вероятность
 				liquidation := m.dataGenerator.GenerateLiquidation(subscription.Symbol, now)

@@ -9,9 +9,9 @@ import (
 	"m-data-storage/internal/domain/entities"
 )
 
-// DataValidatorService реализует интерфейс DataValidator
+// DataValidatorService implements the DataValidator interface
 type DataValidatorService struct {
-	// Настройки валидации
+	// Validation settings
 	maxSymbolLength   int
 	maxBrokerIDLength int
 	maxTimeframLength int
@@ -24,25 +24,25 @@ type DataValidatorService struct {
 	maxVolume         float64
 }
 
-// NewDataValidatorService создает новый сервис валидации данных
+// NewDataValidatorService creates a new data validation service
 func NewDataValidatorService() *DataValidatorService {
 	return &DataValidatorService{
 		maxSymbolLength:   50,
 		maxBrokerIDLength: 50,
 		maxTimeframLength: 10,
 		maxPriceLevels:    1000,
-		maxFutureTime:     5 * time.Minute,      // Максимум 5 минут в будущем
-		maxPastTime:       365 * 24 * time.Hour, // Максимум год в прошлом
-		minPrice:          0.0000001,            // Минимальная цена
-		maxPrice:          1000000000,           // Максимальная цена
-		minVolume:         0,                    // Минимальный объем
-		maxVolume:         1000000000000,        // Максимальный объем
+		maxFutureTime:     5 * time.Minute,      // Maximum 5 minutes in the future
+		maxPastTime:       365 * 24 * time.Hour, // Maximum one year in the past
+		minPrice:          0.0000001,            // Minimum price
+		maxPrice:          1000000000,           // Maximum price
+		minVolume:         0,                    // Minimum volume
+		maxVolume:         1000000000000,        // Maximum volume
 	}
 }
 
-// ValidateTicker валидирует тикер
+// ValidateTicker validates a ticker
 func (v *DataValidatorService) ValidateTicker(ticker entities.Ticker) error {
-	// Проверяем базовые поля
+	// Check basic fields
 	if err := v.validateSymbol(ticker.Symbol); err != nil {
 		return errors.Wrap(err, "invalid symbol")
 	}
@@ -55,27 +55,27 @@ func (v *DataValidatorService) ValidateTicker(ticker entities.Ticker) error {
 		return errors.Wrap(err, "invalid timestamp")
 	}
 
-	// Проверяем цену
+	// Check price
 	if err := v.validatePrice(ticker.Price); err != nil {
 		return errors.Wrap(err, "invalid price")
 	}
 
-	// Проверяем объем
+	// Check volume
 	if err := v.validateVolume(ticker.Volume); err != nil {
 		return errors.Wrap(err, "invalid volume")
 	}
 
-	// Проверяем тип рынка
+	// Check market type
 	if err := v.validateMarketType(ticker.Market); err != nil {
 		return errors.Wrap(err, "invalid market type")
 	}
 
-	// Проверяем тип инструмента
+	// Check instrument type
 	if err := v.validateInstrumentType(ticker.Type); err != nil {
 		return errors.Wrap(err, "invalid instrument type")
 	}
 
-	// Проверяем дополнительные поля для акций
+	// Check additional fields for stocks
 	if ticker.Type == entities.InstrumentTypeStock {
 		if ticker.BidPrice > 0 && ticker.AskPrice > 0 {
 			if ticker.BidPrice >= ticker.AskPrice {
@@ -88,7 +88,7 @@ func (v *DataValidatorService) ValidateTicker(ticker entities.Ticker) error {
 		}
 	}
 
-	// Проверяем дополнительные поля
+	// Check additional fields
 	if ticker.High24h > 0 && ticker.Low24h > 0 {
 		if ticker.High24h < ticker.Low24h {
 			return errors.New("high24h cannot be less than low24h")
@@ -110,9 +110,9 @@ func (v *DataValidatorService) ValidateTicker(ticker entities.Ticker) error {
 	return nil
 }
 
-// ValidateCandle валидирует свечу
+// ValidateCandle validates a candle
 func (v *DataValidatorService) ValidateCandle(candle entities.Candle) error {
-	// Проверяем базовые поля
+	// Check basic fields
 	if err := v.validateSymbol(candle.Symbol); err != nil {
 		return errors.Wrap(err, "invalid symbol")
 	}
@@ -129,7 +129,7 @@ func (v *DataValidatorService) ValidateCandle(candle entities.Candle) error {
 		return errors.Wrap(err, "invalid timeframe")
 	}
 
-	// Проверяем цены OHLC
+	// Check OHLC prices
 	if err := v.validatePrice(candle.Open); err != nil {
 		return errors.Wrap(err, "invalid open price")
 	}
@@ -146,22 +146,22 @@ func (v *DataValidatorService) ValidateCandle(candle entities.Candle) error {
 		return errors.Wrap(err, "invalid close price")
 	}
 
-	// Проверяем объем
+	// Check volume
 	if err := v.validateVolume(candle.Volume); err != nil {
 		return errors.Wrap(err, "invalid volume")
 	}
 
-	// Проверяем тип рынка
+	// Check market type
 	if err := v.validateMarketType(candle.Market); err != nil {
 		return errors.Wrap(err, "invalid market type")
 	}
 
-	// Проверяем тип инструмента
+	// Check instrument type
 	if err := v.validateInstrumentType(candle.Type); err != nil {
 		return errors.Wrap(err, "invalid instrument type")
 	}
 
-	// Проверяем логику OHLC
+	// Check OHLC logic
 	if candle.High < candle.Low {
 		return errors.New("high price cannot be less than low price")
 	}
@@ -174,7 +174,7 @@ func (v *DataValidatorService) ValidateCandle(candle entities.Candle) error {
 		return errors.New("low price must be <= open and close prices")
 	}
 
-	// Проверяем дополнительные поля
+	// Check additional fields
 	if candle.Trades < 0 {
 		return errors.New("trades count cannot be negative")
 	}
@@ -190,9 +190,9 @@ func (v *DataValidatorService) ValidateCandle(candle entities.Candle) error {
 	return nil
 }
 
-// ValidateOrderBook валидирует ордербук
+// ValidateOrderBook validates an order book
 func (v *DataValidatorService) ValidateOrderBook(orderBook entities.OrderBook) error {
-	// Проверяем базовые поля
+	// Check basic fields
 	if err := v.validateSymbol(orderBook.Symbol); err != nil {
 		return errors.Wrap(err, "invalid symbol")
 	}
@@ -205,17 +205,17 @@ func (v *DataValidatorService) ValidateOrderBook(orderBook entities.OrderBook) e
 		return errors.Wrap(err, "invalid timestamp")
 	}
 
-	// Проверяем тип рынка
+	// Check market type
 	if err := v.validateMarketType(orderBook.Market); err != nil {
 		return errors.Wrap(err, "invalid market type")
 	}
 
-	// Проверяем тип инструмента
+	// Check instrument type
 	if err := v.validateInstrumentType(orderBook.Type); err != nil {
 		return errors.Wrap(err, "invalid instrument type")
 	}
 
-	// Проверяем количество уровней
+	// Check number of levels
 	if len(orderBook.Bids) > v.maxPriceLevels {
 		return errors.Errorf("too many bid levels: %d > %d", len(orderBook.Bids), v.maxPriceLevels)
 	}
@@ -224,7 +224,7 @@ func (v *DataValidatorService) ValidateOrderBook(orderBook entities.OrderBook) e
 		return errors.Errorf("too many ask levels: %d > %d", len(orderBook.Asks), v.maxPriceLevels)
 	}
 
-	// Проверяем уровни bids
+	// Check bid levels
 	for i, bid := range orderBook.Bids {
 		if err := v.validatePrice(bid.Price); err != nil {
 			return errors.Wrapf(err, "invalid bid price at level %d", i)
@@ -235,7 +235,7 @@ func (v *DataValidatorService) ValidateOrderBook(orderBook entities.OrderBook) e
 		}
 	}
 
-	// Проверяем уровни asks
+	// Check ask levels
 	for i, ask := range orderBook.Asks {
 		if err := v.validatePrice(ask.Price); err != nil {
 			return errors.Wrapf(err, "invalid ask price at level %d", i)
@@ -246,7 +246,7 @@ func (v *DataValidatorService) ValidateOrderBook(orderBook entities.OrderBook) e
 		}
 	}
 
-	// Проверяем, что лучший bid меньше лучшего ask
+	// Check that best bid is less than best ask
 	bestBid := orderBook.GetBestBid()
 	bestAsk := orderBook.GetBestAsk()
 
@@ -259,13 +259,13 @@ func (v *DataValidatorService) ValidateOrderBook(orderBook entities.OrderBook) e
 	return nil
 }
 
-// ValidateInstrument валидирует информацию об инструменте
+// ValidateInstrument validates instrument information
 func (v *DataValidatorService) ValidateInstrument(instrument entities.InstrumentInfo) error {
 	if err := v.validateSymbol(instrument.Symbol); err != nil {
 		return errors.Wrap(err, "invalid symbol")
 	}
 
-	// Для не-акций проверяем базовый и котируемый активы
+	// For non-stocks, check base and quote assets
 	if instrument.Type != entities.InstrumentTypeStock {
 		if strings.TrimSpace(instrument.BaseAsset) == "" {
 			return errors.New("base asset is required for non-stock instruments")
@@ -276,17 +276,17 @@ func (v *DataValidatorService) ValidateInstrument(instrument entities.Instrument
 		}
 	}
 
-	// Проверяем тип рынка
+	// Check market type
 	if err := v.validateMarketType(instrument.Market); err != nil {
 		return errors.Wrap(err, "invalid market type")
 	}
 
-	// Проверяем тип инструмента
+	// Check instrument type
 	if err := v.validateInstrumentType(instrument.Type); err != nil {
 		return errors.Wrap(err, "invalid instrument type")
 	}
 
-	// Проверяем ценовые ограничения
+	// Check price constraints
 	if instrument.MinPrice < 0 {
 		return errors.New("min price cannot be negative")
 	}
@@ -295,7 +295,7 @@ func (v *DataValidatorService) ValidateInstrument(instrument entities.Instrument
 		return errors.New("max price cannot be less than min price")
 	}
 
-	// Проверяем ограничения по количеству
+	// Check quantity constraints
 	if instrument.MinQuantity < 0 {
 		return errors.New("min quantity cannot be negative")
 	}
@@ -304,7 +304,7 @@ func (v *DataValidatorService) ValidateInstrument(instrument entities.Instrument
 		return errors.New("max quantity cannot be less than min quantity")
 	}
 
-	// Проверяем точность
+	// Check precision
 	if instrument.PricePrecision < 0 || instrument.PricePrecision > 18 {
 		return errors.New("price precision must be between 0 and 18")
 	}
@@ -316,7 +316,7 @@ func (v *DataValidatorService) ValidateInstrument(instrument entities.Instrument
 	return nil
 }
 
-// ValidateSubscription валидирует подписку на инструмент
+// ValidateSubscription validates an instrument subscription
 func (v *DataValidatorService) ValidateSubscription(subscription entities.InstrumentSubscription) error {
 	if err := v.validateSymbol(subscription.Symbol); err != nil {
 		return errors.Wrap(err, "invalid symbol")
@@ -326,17 +326,17 @@ func (v *DataValidatorService) ValidateSubscription(subscription entities.Instru
 		return errors.Wrap(err, "invalid broker_id")
 	}
 
-	// Проверяем тип рынка
+	// Check market type
 	if err := v.validateMarketType(subscription.Market); err != nil {
 		return errors.Wrap(err, "invalid market type")
 	}
 
-	// Проверяем тип инструмента
+	// Check instrument type
 	if err := v.validateInstrumentType(subscription.Type); err != nil {
 		return errors.Wrap(err, "invalid instrument type")
 	}
 
-	// Проверяем типы данных
+	// Check data types
 	if len(subscription.DataTypes) == 0 {
 		return errors.New("at least one data type is required")
 	}
@@ -347,7 +347,7 @@ func (v *DataValidatorService) ValidateSubscription(subscription entities.Instru
 		}
 	}
 
-	// Проверяем дату начала
+	// Check start date
 	if subscription.StartDate.IsZero() {
 		return errors.New("start date is required")
 	}
@@ -359,7 +359,7 @@ func (v *DataValidatorService) ValidateSubscription(subscription entities.Instru
 	return nil
 }
 
-// Вспомогательные методы валидации
+// Helper validation methods
 
 func (v *DataValidatorService) validateSymbol(symbol string) error {
 	symbol = strings.TrimSpace(symbol)
@@ -438,7 +438,7 @@ func (v *DataValidatorService) validateTimeframe(timeframe string) error {
 		return errors.Errorf("timeframe too long: %d > %d", len(timeframe), v.maxTimeframLength)
 	}
 
-	// Проверяем допустимые значения
+	// Check valid values
 	validTimeframes := []string{"1s", "5s", "15s", "30s", "1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w", "1M"}
 	for _, valid := range validTimeframes {
 		if timeframe == valid {

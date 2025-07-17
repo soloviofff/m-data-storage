@@ -12,7 +12,7 @@ import (
 	configservice "m-data-storage/internal/service/config"
 )
 
-// Container представляет DI контейнер
+// Container represents DI container
 type Container struct {
 	mu       sync.RWMutex
 	services map[string]interface{}
@@ -20,7 +20,7 @@ type Container struct {
 	logger   *logger.Logger
 }
 
-// NewContainer создает новый DI контейнер
+// NewContainer creates a new DI container
 func NewContainer(cfg *config.Config, log *logger.Logger) *Container {
 	return &Container{
 		services: make(map[string]interface{}),
@@ -29,14 +29,14 @@ func NewContainer(cfg *config.Config, log *logger.Logger) *Container {
 	}
 }
 
-// Register регистрирует сервис в контейнере
+// Register registers a service in the container
 func (c *Container) Register(name string, service interface{}) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.services[name] = service
 }
 
-// Get получает сервис из контейнера
+// Get retrieves a service from the container
 func (c *Container) Get(name string) (interface{}, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -49,27 +49,27 @@ func (c *Container) Get(name string) (interface{}, error) {
 	return service, nil
 }
 
-// GetConfig возвращает конфигурацию
+// GetConfig returns the configuration
 func (c *Container) GetConfig() *config.Config {
 	return c.config
 }
 
-// GetLogger возвращает логгер
+// GetLogger returns the logger
 func (c *Container) GetLogger() *logger.Logger {
 	return c.logger
 }
 
-// InitializeServices инициализирует все сервисы
+// InitializeServices initializes all services
 func (c *Container) InitializeServices() error {
-	// Инициализируем базу данных (заглушка)
-	// TODO: Реализовать подключение к SQLite
-	var db *sql.DB // Пока nil, будет реализовано в следующих задачах
+	// Initialize database (stub)
+	// TODO: Implement SQLite connection
+	var db *sql.DB // Currently nil, will be implemented in future tasks
 
-	// Регистрируем репозитории
+	// Register repositories
 	configRepo := configservice.NewRepository(db)
 	c.Register("config.repository", configRepo)
 
-	// Регистрируем сервисы
+	// Register services
 	configSvc, err := configservice.NewService(configRepo)
 	if err != nil {
 		return fmt.Errorf("failed to create config service: %w", err)
@@ -79,14 +79,14 @@ func (c *Container) InitializeServices() error {
 	dataValidator := services.NewDataValidatorService()
 	c.Register("data.validator", dataValidator)
 
-	// TODO: Инициализировать StorageManager и StorageService
-	// Пока оставляем как TODO, так как нужна конфигурация для подключения к БД
+	// TODO: Initialize StorageManager and StorageService
+	// Leaving as TODO for now, as database connection configuration is needed
 
-	// Создаем заглушку InstrumentManager для API endpoints
-	// В будущем это будет заменено на полную реализацию с StorageManager и DataPipeline
+	// Create stub InstrumentManager for API endpoints
+	// In the future this will be replaced with full implementation with StorageManager and DataPipeline
 	instrumentManager := services.NewInstrumentManagerService(
-		nil, // metadataStorage - пока nil, будет добавлено позже
-		nil, // dataPipeline - пока nil, будет добавлено позже
+		nil, // metadataStorage - currently nil, will be added later
+		nil, // dataPipeline - currently nil, will be added later
 		dataValidator,
 		c.logger.Logger, // Use the underlying logrus.Logger
 	)
@@ -96,7 +96,7 @@ func (c *Container) InitializeServices() error {
 	return nil
 }
 
-// GetConfigService возвращает сервис конфигурации
+// GetConfigService returns the configuration service
 func (c *Container) GetConfigService() (*configservice.Service, error) {
 	svc, err := c.Get("config.service")
 	if err != nil {
@@ -111,7 +111,7 @@ func (c *Container) GetConfigService() (*configservice.Service, error) {
 	return configSvc, nil
 }
 
-// GetDataValidator возвращает валидатор данных
+// GetDataValidator returns the data validator
 func (c *Container) GetDataValidator() (*services.DataValidatorService, error) {
 	svc, err := c.Get("data.validator")
 	if err != nil {
@@ -141,17 +141,17 @@ func (c *Container) GetInstrumentManager() (interfaces.InstrumentManager, error)
 	return instrumentManager, nil
 }
 
-// Shutdown корректно завершает работу всех сервисов
+// Shutdown properly shuts down all services
 func (c *Container) Shutdown() error {
 	c.logger.Info("Shutting down container services")
 
-	// TODO: Добавить корректное завершение работы сервисов
-	// Например, закрытие соединений с БД, остановка воркеров и т.д.
+	// TODO: Add proper service shutdown
+	// For example, closing database connections, stopping workers, etc.
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Очищаем контейнер
+	// Clear the container
 	c.services = make(map[string]interface{})
 
 	c.logger.Info("Container shutdown completed")

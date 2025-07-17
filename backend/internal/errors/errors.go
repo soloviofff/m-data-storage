@@ -8,35 +8,35 @@ import (
 
 // Common errors
 var (
-	// ErrNotFound - ошибка, когда сущность не найдена
+	// ErrNotFound - error when entity is not found
 	ErrNotFound = errors.New("entity not found")
 
-	// ErrInvalidInput - ошибка валидации входных данных
+	// ErrInvalidInput - input validation error
 	ErrInvalidInput = errors.New("invalid input")
 
-	// ErrUnauthorized - ошибка авторизации
+	// ErrUnauthorized - authorization error
 	ErrUnauthorized = errors.New("unauthorized")
 
-	// ErrForbidden - ошибка доступа
+	// ErrForbidden - access error
 	ErrForbidden = errors.New("forbidden")
 
-	// ErrConflict - ошибка конфликта данных
+	// ErrConflict - data conflict error
 	ErrConflict = errors.New("conflict")
 
-	// ErrInternalServer - внутренняя ошибка сервера
+	// ErrInternalServer - internal server error
 	ErrInternalServer = errors.New("internal server error")
 
-	// ErrServiceUnavailable - сервис недоступен
+	// ErrServiceUnavailable - service unavailable
 	ErrServiceUnavailable = errors.New("service unavailable")
 
-	// ErrTimeout - ошибка таймаута
+	// ErrTimeout - timeout error
 	ErrTimeout = errors.New("timeout")
 
-	// ErrRateLimited - ошибка превышения лимита запросов
+	// ErrRateLimited - rate limit exceeded error
 	ErrRateLimited = errors.New("rate limited")
 )
 
-// AppError представляет ошибку приложения с дополнительной информацией
+// AppError represents application error with additional information
 type AppError struct {
 	Code       string `json:"code"`
 	Message    string `json:"message"`
@@ -45,7 +45,7 @@ type AppError struct {
 	Err        error  `json:"-"`
 }
 
-// Error реализует интерфейс error
+// Error implements error interface
 func (e *AppError) Error() string {
 	if e.Err != nil {
 		return fmt.Sprintf("%s: %s (%v)", e.Code, e.Message, e.Err)
@@ -53,12 +53,12 @@ func (e *AppError) Error() string {
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
 }
 
-// Unwrap возвращает обернутую ошибку
+// Unwrap returns wrapped error
 func (e *AppError) Unwrap() error {
 	return e.Err
 }
 
-// NewAppError создает новую ошибку приложения
+// NewAppError creates new application error
 func NewAppError(code, message string, statusCode int) *AppError {
 	return &AppError{
 		Code:       code,
@@ -67,7 +67,7 @@ func NewAppError(code, message string, statusCode int) *AppError {
 	}
 }
 
-// WrapError оборачивает ошибку в AppError
+// WrapError wraps error in AppError
 func WrapError(err error, code, message string, statusCode int) *AppError {
 	return &AppError{
 		Code:       code,
@@ -77,13 +77,13 @@ func WrapError(err error, code, message string, statusCode int) *AppError {
 	}
 }
 
-// WithDetails добавляет детали к ошибке
+// WithDetails adds details to error
 func (e *AppError) WithDetails(details string) *AppError {
 	e.Details = details
 	return e
 }
 
-// Предопределенные ошибки приложения
+// Predefined application errors
 var (
 	ErrValidationFailed = NewAppError("VALIDATION_FAILED", "Validation failed", http.StatusBadRequest)
 	ErrBrokerNotFound   = NewAppError("BROKER_NOT_FOUND", "Broker not found", http.StatusNotFound)

@@ -15,18 +15,18 @@ import (
 )
 
 func main() {
-	// Парсим флаги командной строки
+	// Parse command line flags
 	var configPath = flag.String("config", "", "Path to configuration file")
 	flag.Parse()
 
-	// Загружаем конфигурацию
+	// Load configuration
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		fmt.Printf("Failed to load configuration: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Инициализируем логгер
+	// Initialize logger
 	log, err := logger.New(cfg.Logging)
 	if err != nil {
 		fmt.Printf("Failed to initialize logger: %v\n", err)
@@ -38,11 +38,11 @@ func main() {
 		"version", cfg.App.Version,
 		"environment", cfg.App.Environment)
 
-	// Создаем контекст с отменой для graceful shutdown
+	// Create context with cancellation for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Настраиваем обработку сигналов
+	// Setup signal handling
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -52,7 +52,7 @@ func main() {
 		cancel()
 	}()
 
-	// Инициализация и запуск сервера
+	// Initialize and start server
 	if err := runServer(ctx, cfg, log); err != nil {
 		log.WithComponent("server").WithError(err).Fatal("Server failed")
 	}
@@ -60,24 +60,24 @@ func main() {
 	log.WithComponent("server").Info("Server stopped")
 }
 
-// runServer запускает сервер с полной инициализацией
+// runServer starts server with full initialization
 func runServer(ctx context.Context, cfg *config.Config, log *logger.Logger) error {
 	log.WithComponent("server").Info("Initializing server components")
 
-	// 1. Инициализация контейнера зависимостей
+	// 1. Initialize dependency injection container
 	container, err := initializeContainer(ctx, cfg, log)
 	if err != nil {
 		return fmt.Errorf("failed to initialize container: %w", err)
 	}
 	defer container.Shutdown()
 
-	// 2. Инициализация HTTP сервера
+	// 2. Initialize HTTP server
 	httpServer, err := initializeHTTPServer(cfg, container, log)
 	if err != nil {
 		return fmt.Errorf("failed to initialize HTTP server: %w", err)
 	}
 
-	// 3. Запуск HTTP сервера
+	// 3. Start HTTP server
 	serverErrChan := make(chan error, 1)
 	go func() {
 		if err := httpServer.Start(); err != nil {
@@ -87,7 +87,7 @@ func runServer(ctx context.Context, cfg *config.Config, log *logger.Logger) erro
 
 	log.WithComponent("server").Info("All components initialized successfully")
 
-	// Ждем сигнала завершения или ошибки сервера
+	// Wait for shutdown signal or server error
 	select {
 	case <-ctx.Done():
 		log.WithComponent("server").Info("Received shutdown signal")
@@ -101,7 +101,7 @@ func runServer(ctx context.Context, cfg *config.Config, log *logger.Logger) erro
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.API.ShutdownTimeout)
 	defer shutdownCancel()
 
-	// Остановка HTTP сервера
+	// Stop HTTP server
 	if err := httpServer.Stop(shutdownCtx); err != nil {
 		log.WithComponent("server").WithError(err).Error("Failed to stop HTTP server gracefully")
 		return err
@@ -111,14 +111,14 @@ func runServer(ctx context.Context, cfg *config.Config, log *logger.Logger) erro
 	return nil
 }
 
-// initializeContainer инициализирует контейнер зависимостей
+// initializeContainer initializes dependency injection container
 func initializeContainer(ctx context.Context, cfg *config.Config, log *logger.Logger) (*container.Container, error) {
 	log.WithComponent("container").Info("Initializing dependency injection container")
 
-	// Создаем контейнер
+	// Create container
 	c := container.NewContainer(cfg, log)
 
-	// Инициализируем сервисы
+	// Initialize services
 	if err := c.InitializeServices(); err != nil {
 		return nil, fmt.Errorf("failed to initialize services: %w", err)
 	}
@@ -127,17 +127,17 @@ func initializeContainer(ctx context.Context, cfg *config.Config, log *logger.Lo
 	return c, nil
 }
 
-// initializeHTTPServer инициализирует HTTP сервер
+// initializeHTTPServer initializes HTTP server
 func initializeHTTPServer(cfg *config.Config, container *container.Container, log *logger.Logger) (*server.Server, error) {
 	log.WithComponent("http").Info("Initializing HTTP server")
 
-	// Создаем HTTP сервер
+	// Create HTTP server
 	httpServer := server.NewServer(cfg, container, log)
 
-	// Настраиваем middleware
+	// Setup middleware
 	httpServer.SetupMiddleware()
 
-	// Настраиваем маршруты
+	// Setup routes
 	httpServer.SetupRoutes()
 
 	log.WithComponent("http").Info("HTTP server initialized successfully")

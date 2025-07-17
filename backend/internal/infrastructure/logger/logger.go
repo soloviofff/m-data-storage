@@ -13,24 +13,24 @@ import (
 	"m-data-storage/internal/infrastructure/config"
 )
 
-// Logger - обертка над logrus с дополнительной функциональностью
+// Logger - wrapper around logrus with additional functionality
 type Logger struct {
 	*logrus.Logger
 	config config.LoggingConfig
 }
 
-// New создает новый логгер на основе конфигурации
+// New creates a new logger based on configuration
 func New(cfg config.LoggingConfig) (*Logger, error) {
 	logger := logrus.New()
 
-	// Устанавливаем уровень логирования
+	// Set logging level
 	level, err := logrus.ParseLevel(cfg.Level)
 	if err != nil {
 		return nil, err
 	}
 	logger.SetLevel(level)
 
-	// Устанавливаем формат
+	// Set format
 	switch strings.ToLower(cfg.Format) {
 	case "json":
 		logger.SetFormatter(&logrus.JSONFormatter{
@@ -54,14 +54,14 @@ func New(cfg config.LoggingConfig) (*Logger, error) {
 		})
 	}
 
-	// Устанавливаем вывод
+	// Set output
 	output, err := getOutput(cfg)
 	if err != nil {
 		return nil, err
 	}
 	logger.SetOutput(output)
 
-	// Включаем информацию о вызывающей функции в development режиме
+	// Enable caller information in development mode
 	logger.SetReportCaller(cfg.Level == "debug" || cfg.Level == "trace")
 
 	return &Logger{
@@ -70,7 +70,7 @@ func New(cfg config.LoggingConfig) (*Logger, error) {
 	}, nil
 }
 
-// getOutput определяет куда направлять логи
+// getOutput determines where to direct logs
 func getOutput(cfg config.LoggingConfig) (io.Writer, error) {
 	switch strings.ToLower(cfg.Output) {
 	case "stdout":
@@ -82,18 +82,18 @@ func getOutput(cfg config.LoggingConfig) (io.Writer, error) {
 			return nil, fmt.Errorf("file path is required when output is 'file'")
 		}
 
-		// Создаем директорию если она не существует
+		// Create directory if it doesn't exist
 		dir := filepath.Dir(cfg.File)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, err
 		}
 
-		// Используем lumberjack для ротации логов
+		// Use lumberjack for log rotation
 		return &lumberjack.Logger{
 			Filename:   cfg.File,
 			MaxSize:    cfg.MaxSize, // MB
 			MaxBackups: cfg.MaxBackups,
-			MaxAge:     cfg.MaxAge, // дни
+			MaxAge:     cfg.MaxAge, // days
 			Compress:   cfg.Compress,
 		}, nil
 	case "both":
@@ -101,7 +101,7 @@ func getOutput(cfg config.LoggingConfig) (io.Writer, error) {
 			return nil, fmt.Errorf("file path is required when output is 'both'")
 		}
 
-		// Создаем директорию если она не существует
+		// Create directory if it doesn't exist
 		dir := filepath.Dir(cfg.File)
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return nil, err
@@ -121,22 +121,22 @@ func getOutput(cfg config.LoggingConfig) (io.Writer, error) {
 	}
 }
 
-// WithComponent добавляет компонент к логгеру
+// WithComponent adds component to logger
 func (l *Logger) WithComponent(component string) *logrus.Entry {
 	return l.WithField("component", component)
 }
 
-// WithBroker добавляет информацию о брокере к логгеру
+// WithBroker adds broker information to logger
 func (l *Logger) WithBroker(brokerID string) *logrus.Entry {
 	return l.WithField("broker_id", brokerID)
 }
 
-// WithSymbol добавляет символ к логгеру
+// WithSymbol adds symbol to logger
 func (l *Logger) WithSymbol(symbol string) *logrus.Entry {
 	return l.WithField("symbol", symbol)
 }
 
-// WithRequest добавляет информацию о запросе к логгеру
+// WithRequest adds request information to logger
 func (l *Logger) WithRequest(requestID, method, path string) *logrus.Entry {
 	return l.WithFields(logrus.Fields{
 		"request_id": requestID,
@@ -145,27 +145,27 @@ func (l *Logger) WithRequest(requestID, method, path string) *logrus.Entry {
 	})
 }
 
-// WithError добавляет ошибку к логгеру
+// WithError adds error to logger
 func (l *Logger) WithError(err error) *logrus.Entry {
 	return l.Logger.WithError(err)
 }
 
-// WithDuration добавляет продолжительность операции к логгеру
+// WithDuration adds operation duration to logger
 func (l *Logger) WithDuration(duration string) *logrus.Entry {
 	return l.WithField("duration", duration)
 }
 
-// WithCount добавляет количество к логгеру
+// WithCount adds count to logger
 func (l *Logger) WithCount(count int64) *logrus.Entry {
 	return l.WithField("count", count)
 }
 
-// WithDataType добавляет тип данных к логгеру
+// WithDataType adds data type to logger
 func (l *Logger) WithDataType(dataType string) *logrus.Entry {
 	return l.WithField("data_type", dataType)
 }
 
-// LogDataReceived логирует получение данных
+// LogDataReceived logs data reception
 func (l *Logger) LogDataReceived(brokerID, symbol, dataType string, count int64) {
 	l.WithFields(logrus.Fields{
 		"broker_id": brokerID,
@@ -175,7 +175,7 @@ func (l *Logger) LogDataReceived(brokerID, symbol, dataType string, count int64)
 	}).Debug("Data received")
 }
 
-// LogDataProcessed логирует обработку данных
+// LogDataProcessed logs data processing
 func (l *Logger) LogDataProcessed(dataType string, count int64, duration string) {
 	l.WithFields(logrus.Fields{
 		"data_type": dataType,
@@ -184,12 +184,12 @@ func (l *Logger) LogDataProcessed(dataType string, count int64, duration string)
 	}).Info("Data processed")
 }
 
-// LogBrokerConnected логирует подключение к брокеру
+// LogBrokerConnected logs broker connection
 func (l *Logger) LogBrokerConnected(brokerID string) {
 	l.WithBroker(brokerID).Info("Broker connected")
 }
 
-// LogBrokerDisconnected логирует отключение от брокера
+// LogBrokerDisconnected logs broker disconnection
 func (l *Logger) LogBrokerDisconnected(brokerID string, reason string) {
 	l.WithFields(logrus.Fields{
 		"broker_id": brokerID,
@@ -197,12 +197,12 @@ func (l *Logger) LogBrokerDisconnected(brokerID string, reason string) {
 	}).Warn("Broker disconnected")
 }
 
-// LogBrokerError логирует ошибку брокера
+// LogBrokerError logs broker error
 func (l *Logger) LogBrokerError(brokerID string, err error) {
 	l.WithBroker(brokerID).WithError(err).Error("Broker error")
 }
 
-// LogAPIRequest логирует API запрос
+// LogAPIRequest logs API request
 func (l *Logger) LogAPIRequest(requestID, method, path, userAgent string, duration string, statusCode int) {
 	entry := l.WithFields(logrus.Fields{
 		"request_id":  requestID,
@@ -220,7 +220,7 @@ func (l *Logger) LogAPIRequest(requestID, method, path, userAgent string, durati
 	}
 }
 
-// LogStorageOperation логирует операцию с хранилищем
+// LogStorageOperation logs storage operation
 func (l *Logger) LogStorageOperation(operation, table string, count int64, duration string) {
 	l.WithFields(logrus.Fields{
 		"operation": operation,
@@ -230,7 +230,7 @@ func (l *Logger) LogStorageOperation(operation, table string, count int64, durat
 	}).Debug("Storage operation completed")
 }
 
-// LogHealthCheck логирует проверку здоровья
+// LogHealthCheck logs health check
 func (l *Logger) LogHealthCheck(component string, healthy bool, details string) {
 	entry := l.WithFields(logrus.Fields{
 		"component": component,
@@ -245,9 +245,9 @@ func (l *Logger) LogHealthCheck(component string, healthy bool, details string) 
 	}
 }
 
-// Close закрывает логгер и освобождает ресурсы
+// Close closes logger and releases resources
 func (l *Logger) Close() error {
-	// Если используется файловый вывод, закрываем его
+	// If file output is used, close it
 	if closer, ok := l.Logger.Out.(io.Closer); ok {
 		return closer.Close()
 	}

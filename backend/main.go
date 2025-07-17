@@ -14,18 +14,18 @@ import (
 )
 
 func main() {
-	// Парсим флаги командной строки
+	// Parse command line flags
 	var configPath = flag.String("config", "", "Path to configuration file")
 	flag.Parse()
 
-	// Загружаем конфигурацию
+	// Load configuration
 	cfg, err := config.Load(*configPath)
 	if err != nil {
 		fmt.Printf("Failed to load configuration: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Инициализируем логгер
+	// Initialize logger
 	log, err := logger.New(cfg.Logging)
 	if err != nil {
 		fmt.Printf("Failed to initialize logger: %v\n", err)
@@ -37,11 +37,11 @@ func main() {
 		"version", cfg.App.Version,
 		"environment", cfg.App.Environment)
 
-	// Создаем контекст с отменой для graceful shutdown
+	// Create context with cancellation for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Настраиваем обработку сигналов
+	// Setup signal handling
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -51,14 +51,14 @@ func main() {
 		cancel()
 	}()
 
-	// TODO: Инициализация компонентов приложения
+	// TODO: Initialize application components
 	if err := initializeApplication(ctx, cfg, log); err != nil {
 		log.WithComponent("main").WithError(err).Fatal("Failed to initialize application")
 	}
 
 	log.WithComponent("main").Info("Application started successfully")
 
-	// Ждем сигнала завершения
+	// Wait for shutdown signal
 	<-ctx.Done()
 
 	// Graceful shutdown
@@ -73,35 +73,35 @@ func main() {
 	log.WithComponent("main").Info("Application stopped")
 }
 
-// initializeApplication инициализирует все компоненты приложения
+// initializeApplication initializes all application components
 func initializeApplication(ctx context.Context, cfg *config.Config, log *logger.Logger) error {
 	log.WithComponent("init").Info("Initializing application components")
 
-	// TODO: Инициализация компонентов
-	// 1. Подключение к базам данных (SQLite + QuestDB)
-	// 2. Инициализация хранилищ
-	// 3. Инициализация сервисов
-	// 4. Загрузка конфигураций брокеров
-	// 5. Инициализация брокеров
-	// 6. Запуск веб-сервера
-	// 7. Запуск сервиса сбора данных
+	// TODO: Initialize components
+	// 1. Connect to databases (SQLite + QuestDB)
+	// 2. Initialize storage repositories
+	// 3. Initialize services
+	// 4. Load broker configurations
+	// 5. Initialize brokers
+	// 6. Start web server
+	// 7. Start data collection service
 
 	log.WithComponent("init").Info("Application components initialized successfully")
 	return nil
 }
 
-// shutdownApplication выполняет graceful shutdown всех компонентов
+// shutdownApplication performs graceful shutdown of all components
 func shutdownApplication(ctx context.Context, log *logger.Logger) error {
 	log.WithComponent("shutdown").Info("Shutting down application components")
 
-	// TODO: Graceful shutdown компонентов в обратном порядке
-	// 1. Остановка сбора данных
-	// 2. Остановка веб-сервера
-	// 3. Остановка брокеров
-	// 4. Остановка сервисов
-	// 5. Закрытие соединений с базами данных
+	// TODO: Graceful shutdown of components in reverse order
+	// 1. Stop data collection
+	// 2. Stop web server
+	// 3. Stop brokers
+	// 4. Stop services
+	// 5. Close database connections
 
-	// Даем время на завершение операций
+	// Give time for operations to complete
 	select {
 	case <-time.After(1 * time.Second):
 	case <-ctx.Done():

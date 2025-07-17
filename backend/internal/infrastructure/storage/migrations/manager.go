@@ -16,7 +16,7 @@ var sqliteMigrations embed.FS
 //go:embed questdb/*.sql
 var questdbMigrations embed.FS
 
-// Manager управляет миграциями для обеих баз данных
+// Manager manages migrations for both databases
 type Manager struct {
 	sqliteDB  *sql.DB
 	questDB   *sql.DB
@@ -25,7 +25,7 @@ type Manager struct {
 	questMgr  *Migrator
 }
 
-// NewManager создает новый менеджер миграций
+// NewManager creates a new migration manager
 func NewManager(sqliteDB, questDB *sql.DB, logger *logrus.Logger) (*Manager, error) {
 	if sqliteDB == nil {
 		return nil, fmt.Errorf("SQLite database connection is required")
@@ -45,7 +45,7 @@ func NewManager(sqliteDB, questDB *sql.DB, logger *logrus.Logger) (*Manager, err
 		questMgr:  NewMigrator(questDB, "schema_migrations"),
 	}
 
-	// Загружаем миграции
+	// Load migrations
 	if err := manager.loadMigrations(); err != nil {
 		return nil, fmt.Errorf("failed to load migrations: %w", err)
 	}
@@ -53,9 +53,9 @@ func NewManager(sqliteDB, questDB *sql.DB, logger *logrus.Logger) (*Manager, err
 	return manager, nil
 }
 
-// loadMigrations загружает миграции из встроенных файлов
+// loadMigrations loads migrations from embedded files
 func (m *Manager) loadMigrations() error {
-	// Загружаем SQLite миграции
+	// Load SQLite migrations
 	sqliteMigs, err := LoadMigrationsFromFS(sqliteMigrations, "sqlite")
 	if err != nil {
 		return fmt.Errorf("failed to load SQLite migrations: %w", err)
@@ -68,7 +68,7 @@ func (m *Manager) loadMigrations() error {
 	m.sqliteMgr.AddMigrations(sqliteMigs)
 	m.logger.WithField("count", len(sqliteMigs)).Info("Loaded SQLite migrations")
 
-	// Загружаем QuestDB миграции
+	// Load QuestDB migrations
 	questMigs, err := LoadMigrationsFromFS(questdbMigrations, "questdb")
 	if err != nil {
 		return fmt.Errorf("failed to load QuestDB migrations: %w", err)
@@ -84,19 +84,19 @@ func (m *Manager) loadMigrations() error {
 	return nil
 }
 
-// MigrateUp выполняет все неприменённые миграции для обеих баз данных
+// MigrateUp executes all unapplied migrations for both databases
 func (m *Manager) MigrateUp(ctx context.Context) error {
 	m.logger.Info("Starting database migrations")
 	start := time.Now()
 
-	// Мигрируем SQLite
+	// Migrate SQLite
 	m.logger.Info("Migrating SQLite database")
 	if err := m.sqliteMgr.Up(ctx); err != nil {
 		return fmt.Errorf("SQLite migration failed: %w", err)
 	}
 	m.logger.Info("SQLite migration completed successfully")
 
-	// Мигрируем QuestDB
+	// Migrate QuestDB
 	m.logger.Info("Migrating QuestDB database")
 	if err := m.questMgr.Up(ctx); err != nil {
 		return fmt.Errorf("QuestDB migration failed: %w", err)
@@ -109,14 +109,14 @@ func (m *Manager) MigrateUp(ctx context.Context) error {
 	return nil
 }
 
-// MigrateDown откатывает миграции до указанной версии
+// MigrateDown rolls back migrations to specified version
 func (m *Manager) MigrateDown(ctx context.Context, sqliteVersion, questdbVersion int64) error {
 	m.logger.WithFields(logrus.Fields{
 		"sqlite_version":  sqliteVersion,
 		"questdb_version": questdbVersion,
 	}).Info("Starting database rollback")
 
-	// Откатываем QuestDB (сначала, так как данные зависят от метаданных)
+	// Roll back QuestDB (first, as data depends on metadata)
 	if questdbVersion >= 0 {
 		m.logger.WithField("version", questdbVersion).Info("Rolling back QuestDB")
 		if err := m.questMgr.Down(ctx, questdbVersion); err != nil {
@@ -125,7 +125,7 @@ func (m *Manager) MigrateDown(ctx context.Context, sqliteVersion, questdbVersion
 		m.logger.Info("QuestDB rollback completed")
 	}
 
-	// Откатываем SQLite
+	// Roll back SQLite
 	if sqliteVersion >= 0 {
 		m.logger.WithField("version", sqliteVersion).Info("Rolling back SQLite")
 		if err := m.sqliteMgr.Down(ctx, sqliteVersion); err != nil {
@@ -138,15 +138,15 @@ func (m *Manager) MigrateDown(ctx context.Context, sqliteVersion, questdbVersion
 	return nil
 }
 
-// Status возвращает статус миграций для обеих баз данных
+// Status returns migration status for both databases
 func (m *Manager) Status(ctx context.Context) (*DatabaseMigrationStatus, error) {
-	// Получаем статус SQLite
+	// Get SQLite status
 	sqliteStatus, err := m.sqliteMgr.Status(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get SQLite migration status: %w", err)
 	}
 
-	// Получаем статус QuestDB
+	// Get QuestDB status
 	questdbStatus, err := m.questMgr.Status(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get QuestDB migration status: %w", err)
@@ -158,20 +158,20 @@ func (m *Manager) Status(ctx context.Context) (*DatabaseMigrationStatus, error) 
 	}, nil
 }
 
-// DatabaseMigrationStatus представляет общий статус миграций
+// DatabaseMigrationStatus represents overall migration status
 type DatabaseMigrationStatus struct {
 	SQLite  []MigrationInfo `json:"sqlite"`
 	QuestDB []MigrationInfo `json:"questdb"`
 }
 
-// ValidateConnections проверяет подключения к базам данных
+// ValidateConnections validates database connections
 func (m *Manager) ValidateConnections(ctx context.Context) error {
-	// Проверяем SQLite
+	// Check SQLite
 	if err := m.sqliteDB.PingContext(ctx); err != nil {
 		return fmt.Errorf("SQLite connection failed: %w", err)
 	}
 
-	// Проверяем QuestDB
+	// Check QuestDB
 	if err := m.questDB.PingContext(ctx); err != nil {
 		return fmt.Errorf("QuestDB connection failed: %w", err)
 	}
@@ -180,17 +180,17 @@ func (m *Manager) ValidateConnections(ctx context.Context) error {
 	return nil
 }
 
-// GetSQLiteMigrator возвращает мигратор для SQLite
+// GetSQLiteMigrator returns migrator for SQLite
 func (m *Manager) GetSQLiteMigrator() *Migrator {
 	return m.sqliteMgr
 }
 
-// GetQuestDBMigrator возвращает мигратор для QuestDB
+// GetQuestDBMigrator returns migrator for QuestDB
 func (m *Manager) GetQuestDBMigrator() *Migrator {
 	return m.questMgr
 }
 
-// Close закрывает соединения с базами данных
+// Close closes database connections
 func (m *Manager) Close() error {
 	var sqliteErr, questErr error
 

@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// DataType - тип данных для подписки
+// DataType - data type for subscription
 type DataType string
 
 const (
@@ -13,7 +13,7 @@ const (
 	DataTypeOrderBook DataType = "orderbook"
 )
 
-// InstrumentInfo представляет информацию об инструменте
+// InstrumentInfo represents instrument information
 type InstrumentInfo struct {
 	Symbol            string         `json:"symbol"`
 	BaseAsset         string         `json:"base_asset"`
@@ -29,7 +29,7 @@ type InstrumentInfo struct {
 	QuantityPrecision int            `json:"quantity_precision"`
 }
 
-// InstrumentSubscription представляет подписку на инструмент
+// InstrumentSubscription represents instrument subscription
 type InstrumentSubscription struct {
 	ID        string                 `json:"id"`
 	Symbol    string                 `json:"symbol"`
@@ -44,7 +44,7 @@ type InstrumentSubscription struct {
 	UpdatedAt time.Time              `json:"updated_at"`
 }
 
-// IsValid проверяет валидность информации об инструменте
+// IsValid checks instrument information validity
 func (ii *InstrumentInfo) IsValid() bool {
 	if ii.Symbol == "" {
 		return false
@@ -76,7 +76,7 @@ func (ii *InstrumentInfo) IsValid() bool {
 	return true
 }
 
-// IsValid проверяет валидность подписки на инструмент
+// IsValid checks instrument subscription validity
 func (is *InstrumentSubscription) IsValid() bool {
 	if is.Symbol == "" {
 		return false
@@ -91,7 +91,7 @@ func (is *InstrumentSubscription) IsValid() bool {
 		return false
 	}
 
-	// Проверяем валидность типов данных
+	// Check data types validity
 	for _, dataType := range is.DataTypes {
 		if dataType != DataTypeTicker && dataType != DataTypeCandle && dataType != DataTypeOrderBook {
 			return false
@@ -101,7 +101,7 @@ func (is *InstrumentSubscription) IsValid() bool {
 	return true
 }
 
-// HasDataType проверяет, включен ли указанный тип данных в подписку
+// HasDataType checks if specified data type is included in subscription
 func (is *InstrumentSubscription) HasDataType(dataType DataType) bool {
 	for _, dt := range is.DataTypes {
 		if dt == dataType {
@@ -111,7 +111,7 @@ func (is *InstrumentSubscription) HasDataType(dataType DataType) bool {
 	return false
 }
 
-// GetSetting возвращает значение настройки по ключу
+// GetSetting returns setting value by key
 func (is *InstrumentSubscription) GetSetting(key string) (interface{}, bool) {
 	if is.Settings == nil {
 		return nil, false
@@ -120,7 +120,7 @@ func (is *InstrumentSubscription) GetSetting(key string) (interface{}, bool) {
 	return value, exists
 }
 
-// SetSetting устанавливает значение настройки
+// SetSetting sets setting value
 func (is *InstrumentSubscription) SetSetting(key string, value interface{}) {
 	if is.Settings == nil {
 		is.Settings = make(map[string]interface{})
@@ -128,7 +128,7 @@ func (is *InstrumentSubscription) SetSetting(key string, value interface{}) {
 	is.Settings[key] = value
 }
 
-// GetStringSetting возвращает строковое значение настройки
+// GetStringSetting returns string setting value
 func (is *InstrumentSubscription) GetStringSetting(key string) (string, bool) {
 	value, exists := is.GetSetting(key)
 	if !exists {
@@ -138,7 +138,7 @@ func (is *InstrumentSubscription) GetStringSetting(key string) (string, bool) {
 	return str, ok
 }
 
-// GetIntSetting возвращает целочисленное значение настройки
+// GetIntSetting returns integer setting value
 func (is *InstrumentSubscription) GetIntSetting(key string) (int, bool) {
 	value, exists := is.GetSetting(key)
 	if !exists {
@@ -155,7 +155,7 @@ func (is *InstrumentSubscription) GetIntSetting(key string) (int, bool) {
 	}
 }
 
-// GetBoolSetting возвращает булево значение настройки
+// GetBoolSetting returns boolean setting value
 func (is *InstrumentSubscription) GetBoolSetting(key string) (bool, bool) {
 	value, exists := is.GetSetting(key)
 	if !exists {

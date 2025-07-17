@@ -12,46 +12,46 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// StorageService предоставляет высокоуровневые операции для работы с хранилищем данных
+// StorageService provides high-level operations for working with data storage
 type StorageService struct {
 	storageManager interfaces.StorageManager
 	validator      interfaces.DataValidator
 	logger         *logrus.Logger
 
-	// Настройки пакетной обработки
+	// Batch processing settings
 	batchSize     int
 	flushInterval time.Duration
 
-	// Буферы для пакетной обработки
+	// Buffers for batch processing
 	tickerBuffer    []entities.Ticker
 	candleBuffer    []entities.Candle
 	orderBookBuffer []entities.OrderBook
 
-	// Мьютексы для защиты буферов
+	// Mutexes for buffer protection
 	tickerMutex    sync.Mutex
 	candleMutex    sync.Mutex
 	orderBookMutex sync.Mutex
 
-	// Каналы для уведомлений о флаше
+	// Channels for flush notifications
 	flushTicker    *time.Ticker
 	stopChan       chan struct{}
 	flushWaitGroup sync.WaitGroup
 
-	// Статистика
+	// Statistics
 	stats StorageStats
 	mutex sync.RWMutex
 }
 
-// StorageStats содержит статистику работы сервиса хранения
+// StorageStats contains storage service statistics
 type StorageStats = interfaces.StorageServiceStats
 
-// StorageServiceConfig содержит конфигурацию для StorageService
+// StorageServiceConfig contains configuration for StorageService
 type StorageServiceConfig struct {
 	BatchSize     int           `yaml:"batch_size" json:"batch_size"`
 	FlushInterval time.Duration `yaml:"flush_interval" json:"flush_interval"`
 }
 
-// DefaultStorageServiceConfig возвращает конфигурацию по умолчанию
+// DefaultStorageServiceConfig returns default configuration
 func DefaultStorageServiceConfig() StorageServiceConfig {
 	return StorageServiceConfig{
 		BatchSize:     1000,
@@ -59,7 +59,7 @@ func DefaultStorageServiceConfig() StorageServiceConfig {
 	}
 }
 
-// NewStorageService создает новый экземпляр StorageService
+// NewStorageService creates a new StorageService instance
 func NewStorageService(
 	storageManager interfaces.StorageManager,
 	validator interfaces.DataValidator,
@@ -82,15 +82,15 @@ func NewStorageService(
 		stopChan:        make(chan struct{}),
 	}
 
-	// Запускаем периодический флаш
+	// Start periodic flush
 	service.startPeriodicFlush()
 
 	return service
 }
 
-// SaveTicker сохраняет тикер с пакетной обработкой
+// SaveTicker saves a ticker with batch processing
 func (s *StorageService) SaveTicker(ctx context.Context, ticker entities.Ticker) error {
-	// Валидируем тикер
+	// Validate ticker
 	if err := s.validator.ValidateTicker(ticker); err != nil {
 		s.incrementErrors()
 		return fmt.Errorf("ticker validation failed: %w", err)
@@ -101,7 +101,7 @@ func (s *StorageService) SaveTicker(ctx context.Context, ticker entities.Ticker)
 
 	s.tickerBuffer = append(s.tickerBuffer, ticker)
 
-	// Если буфер заполнен, сбрасываем его
+	// If buffer is full, flush it
 	if len(s.tickerBuffer) >= s.batchSize {
 		return s.flushTickersUnsafe(ctx)
 	}
@@ -109,9 +109,9 @@ func (s *StorageService) SaveTicker(ctx context.Context, ticker entities.Ticker)
 	return nil
 }
 
-// SaveCandle сохраняет свечу с пакетной обработкой
+// SaveCandle saves a candle with batch processing
 func (s *StorageService) SaveCandle(ctx context.Context, candle entities.Candle) error {
-	// Валидируем свечу
+	// Validate candle
 	if err := s.validator.ValidateCandle(candle); err != nil {
 		s.incrementErrors()
 		return fmt.Errorf("candle validation failed: %w", err)
@@ -122,7 +122,7 @@ func (s *StorageService) SaveCandle(ctx context.Context, candle entities.Candle)
 
 	s.candleBuffer = append(s.candleBuffer, candle)
 
-	// Если буфер заполнен, сбрасываем его
+	// If buffer is full, flush it
 	if len(s.candleBuffer) >= s.batchSize {
 		return s.flushCandlesUnsafe(ctx)
 	}
@@ -130,9 +130,9 @@ func (s *StorageService) SaveCandle(ctx context.Context, candle entities.Candle)
 	return nil
 }
 
-// SaveOrderBook сохраняет ордербук с пакетной обработкой
+// SaveOrderBook saves an order book with batch processing
 func (s *StorageService) SaveOrderBook(ctx context.Context, orderBook entities.OrderBook) error {
-	// Валидируем ордербук
+	// Validate order book
 	if err := s.validator.ValidateOrderBook(orderBook); err != nil {
 		s.incrementErrors()
 		return fmt.Errorf("orderbook validation failed: %w", err)
@@ -143,7 +143,7 @@ func (s *StorageService) SaveOrderBook(ctx context.Context, orderBook entities.O
 
 	s.orderBookBuffer = append(s.orderBookBuffer, orderBook)
 
-	// Если буфер заполнен, сбрасываем его
+	// If buffer is full, flush it
 	if len(s.orderBookBuffer) >= s.batchSize {
 		return s.flushOrderBooksUnsafe(ctx)
 	}
@@ -151,9 +151,9 @@ func (s *StorageService) SaveOrderBook(ctx context.Context, orderBook entities.O
 	return nil
 }
 
-// SaveTickers сохраняет множественные тикеры
+// SaveTickers saves multiple tickers
 func (s *StorageService) SaveTickers(ctx context.Context, tickers []entities.Ticker) error {
-	// Валидируем все тикеры
+	// Validate all tickers
 	for i, ticker := range tickers {
 		if err := s.validator.ValidateTicker(ticker); err != nil {
 			s.incrementErrors()
@@ -161,7 +161,7 @@ func (s *StorageService) SaveTickers(ctx context.Context, tickers []entities.Tic
 		}
 	}
 
-	// Сохраняем напрямую в storage manager
+	// Save directly to storage manager
 	if err := s.storageManager.SaveTickers(ctx, tickers); err != nil {
 		s.incrementErrors()
 		return fmt.Errorf("failed to save tickers: %w", err)
@@ -171,9 +171,9 @@ func (s *StorageService) SaveTickers(ctx context.Context, tickers []entities.Tic
 	return nil
 }
 
-// SaveCandles сохраняет множественные свечи
+// SaveCandles saves multiple candles
 func (s *StorageService) SaveCandles(ctx context.Context, candles []entities.Candle) error {
-	// Валидируем все свечи
+	// Validate all candles
 	for i, candle := range candles {
 		if err := s.validator.ValidateCandle(candle); err != nil {
 			s.incrementErrors()
@@ -181,7 +181,7 @@ func (s *StorageService) SaveCandles(ctx context.Context, candles []entities.Can
 		}
 	}
 
-	// Сохраняем напрямую в storage manager
+	// Save directly to storage manager
 	if err := s.storageManager.SaveCandles(ctx, candles); err != nil {
 		s.incrementErrors()
 		return fmt.Errorf("failed to save candles: %w", err)
@@ -191,9 +191,9 @@ func (s *StorageService) SaveCandles(ctx context.Context, candles []entities.Can
 	return nil
 }
 
-// SaveOrderBooks сохраняет множественные ордербуки
+// SaveOrderBooks saves multiple order books
 func (s *StorageService) SaveOrderBooks(ctx context.Context, orderBooks []entities.OrderBook) error {
-	// Валидируем все ордербуки
+	// Validate all order books
 	for i, orderBook := range orderBooks {
 		if err := s.validator.ValidateOrderBook(orderBook); err != nil {
 			s.incrementErrors()
@@ -201,7 +201,7 @@ func (s *StorageService) SaveOrderBooks(ctx context.Context, orderBooks []entiti
 		}
 	}
 
-	// Сохраняем напрямую в storage manager
+	// Save directly to storage manager
 	if err := s.storageManager.SaveOrderBooks(ctx, orderBooks); err != nil {
 		s.incrementErrors()
 		return fmt.Errorf("failed to save orderbooks: %w", err)
@@ -211,26 +211,26 @@ func (s *StorageService) SaveOrderBooks(ctx context.Context, orderBooks []entiti
 	return nil
 }
 
-// GetTickers получает тикеры с фильтрацией
+// GetTickers retrieves tickers with filtering
 func (s *StorageService) GetTickers(ctx context.Context, filter interfaces.TickerFilter) ([]entities.Ticker, error) {
 	return s.storageManager.GetTickers(ctx, filter)
 }
 
-// GetCandles получает свечи с фильтрацией
+// GetCandles retrieves candles with filtering
 func (s *StorageService) GetCandles(ctx context.Context, filter interfaces.CandleFilter) ([]entities.Candle, error) {
 	return s.storageManager.GetCandles(ctx, filter)
 }
 
-// GetOrderBooks получает ордербуки с фильтрацией
+// GetOrderBooks retrieves order books with filtering
 func (s *StorageService) GetOrderBooks(ctx context.Context, filter interfaces.OrderBookFilter) ([]entities.OrderBook, error) {
 	return s.storageManager.GetOrderBooks(ctx, filter)
 }
 
-// FlushAll принудительно сбрасывает все буферы
+// FlushAll forcibly flushes all buffers
 func (s *StorageService) FlushAll(ctx context.Context) error {
 	var errors []error
 
-	// Сбрасываем тикеры
+	// Flush tickers
 	s.tickerMutex.Lock()
 	if len(s.tickerBuffer) > 0 {
 		if err := s.flushTickersUnsafe(ctx); err != nil {
@@ -239,7 +239,7 @@ func (s *StorageService) FlushAll(ctx context.Context) error {
 	}
 	s.tickerMutex.Unlock()
 
-	// Сбрасываем свечи
+	// Flush candles
 	s.candleMutex.Lock()
 	if len(s.candleBuffer) > 0 {
 		if err := s.flushCandlesUnsafe(ctx); err != nil {
@@ -248,7 +248,7 @@ func (s *StorageService) FlushAll(ctx context.Context) error {
 	}
 	s.candleMutex.Unlock()
 
-	// Сбрасываем ордербуки
+	// Flush order books
 	s.orderBookMutex.Lock()
 	if len(s.orderBookBuffer) > 0 {
 		if err := s.flushOrderBooksUnsafe(ctx); err != nil {
@@ -264,29 +264,29 @@ func (s *StorageService) FlushAll(ctx context.Context) error {
 	return nil
 }
 
-// GetStats возвращает статистику сервиса
+// GetStats returns service statistics
 func (s *StorageService) GetStats() StorageStats {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 	return s.stats
 }
 
-// Close закрывает сервис и сбрасывает все буферы
+// Close closes the service and flushes all buffers
 func (s *StorageService) Close(ctx context.Context) error {
-	// Останавливаем периодический флаш
+	// Stop periodic flush
 	close(s.stopChan)
 	if s.flushTicker != nil {
 		s.flushTicker.Stop()
 	}
 
-	// Ждем завершения всех операций флаша
+	// Wait for all flush operations to complete
 	s.flushWaitGroup.Wait()
 
-	// Сбрасываем все оставшиеся данные
+	// Flush all remaining data
 	return s.FlushAll(ctx)
 }
 
-// startPeriodicFlush запускает периодический сброс буферов
+// startPeriodicFlush starts periodic buffer flushing
 func (s *StorageService) startPeriodicFlush() {
 	s.flushTicker = time.NewTicker(s.flushInterval)
 
@@ -310,7 +310,7 @@ func (s *StorageService) startPeriodicFlush() {
 	}()
 }
 
-// flushTickersUnsafe сбрасывает буфер тикеров (должен вызываться под мьютексом)
+// flushTickersUnsafe flushes ticker buffer (must be called under mutex)
 func (s *StorageService) flushTickersUnsafe(ctx context.Context) error {
 	if len(s.tickerBuffer) == 0 {
 		return nil
@@ -322,7 +322,7 @@ func (s *StorageService) flushTickersUnsafe(ctx context.Context) error {
 	}
 
 	count := int64(len(s.tickerBuffer))
-	s.tickerBuffer = s.tickerBuffer[:0] // Очищаем буфер
+	s.tickerBuffer = s.tickerBuffer[:0] // Clear buffer
 	s.updateStats(count, 0, 0)
 	s.incrementBatchesFlashed()
 
@@ -330,7 +330,7 @@ func (s *StorageService) flushTickersUnsafe(ctx context.Context) error {
 	return nil
 }
 
-// flushCandlesUnsafe сбрасывает буфер свечей (должен вызываться под мьютексом)
+// flushCandlesUnsafe flushes candle buffer (must be called under mutex)
 func (s *StorageService) flushCandlesUnsafe(ctx context.Context) error {
 	if len(s.candleBuffer) == 0 {
 		return nil
@@ -342,7 +342,7 @@ func (s *StorageService) flushCandlesUnsafe(ctx context.Context) error {
 	}
 
 	count := int64(len(s.candleBuffer))
-	s.candleBuffer = s.candleBuffer[:0] // Очищаем буфер
+	s.candleBuffer = s.candleBuffer[:0] // Clear buffer
 	s.updateStats(0, count, 0)
 	s.incrementBatchesFlashed()
 
@@ -350,7 +350,7 @@ func (s *StorageService) flushCandlesUnsafe(ctx context.Context) error {
 	return nil
 }
 
-// flushOrderBooksUnsafe сбрасывает буфер ордербуков (должен вызываться под мьютексом)
+// flushOrderBooksUnsafe flushes order book buffer (must be called under mutex)
 func (s *StorageService) flushOrderBooksUnsafe(ctx context.Context) error {
 	if len(s.orderBookBuffer) == 0 {
 		return nil
@@ -362,7 +362,7 @@ func (s *StorageService) flushOrderBooksUnsafe(ctx context.Context) error {
 	}
 
 	count := int64(len(s.orderBookBuffer))
-	s.orderBookBuffer = s.orderBookBuffer[:0] // Очищаем буфер
+	s.orderBookBuffer = s.orderBookBuffer[:0] // Clear buffer
 	s.updateStats(0, 0, count)
 	s.incrementBatchesFlashed()
 
@@ -370,7 +370,7 @@ func (s *StorageService) flushOrderBooksUnsafe(ctx context.Context) error {
 	return nil
 }
 
-// updateStats обновляет статистику
+// updateStats updates statistics
 func (s *StorageService) updateStats(tickers, candles, orderBooks int64) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -381,14 +381,14 @@ func (s *StorageService) updateStats(tickers, candles, orderBooks int64) {
 	s.stats.LastFlushTime = time.Now()
 }
 
-// incrementErrors увеличивает счетчик ошибок
+// incrementErrors increments error counter
 func (s *StorageService) incrementErrors() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.stats.ErrorsCount++
 }
 
-// incrementBatchesFlashed увеличивает счетчик сброшенных пакетов
+// incrementBatchesFlashed increments flushed batches counter
 func (s *StorageService) incrementBatchesFlashed() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()

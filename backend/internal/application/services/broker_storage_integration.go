@@ -12,47 +12,47 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// BrokerStorageIntegration интегрирует брокеры с системой хранения
+// BrokerStorageIntegration integrates brokers with storage system
 type BrokerStorageIntegration struct {
 	brokerManager  interfaces.BrokerManager
 	storageService interfaces.StorageService
 	logger         *logrus.Logger
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	// Активные интеграции по брокерам
+	// Active integrations by broker
 	integrations map[string]*BrokerIntegration
 	mu           sync.RWMutex
 
-	// Статистика
+	// Statistics
 	stats   IntegrationStats
 	statsMu sync.RWMutex
 }
 
-// BrokerIntegration представляет интеграцию одного брокера с хранилищем
+// BrokerIntegration represents integration of one broker with storage
 type BrokerIntegration struct {
 	brokerID string
 	broker   interfaces.Broker
 
-	// Каналы для остановки воркеров
+	// Channels for stopping workers
 	stopChan chan struct{}
 	wg       sync.WaitGroup
 
-	// Статистика по брокеру
+	// Broker statistics
 	stats BrokerIntegrationStats
 	mu    sync.RWMutex
 }
 
-// IntegrationStats содержит общую статистику интеграции
+// IntegrationStats contains overall integration statistics
 type IntegrationStats = interfaces.BrokerStorageIntegrationStats
 
-// BrokerIntegrationStats содержит статистику интеграции по брокеру
+// BrokerIntegrationStats contains broker integration statistics
 type BrokerIntegrationStats = interfaces.BrokerIntegrationStats
 
-// NewBrokerStorageIntegration создает новый сервис интеграции
+// NewBrokerStorageIntegration creates a new integration service
 func NewBrokerStorageIntegration(
 	brokerManager interfaces.BrokerManager,
 	storageService interfaces.StorageService,
@@ -73,7 +73,7 @@ func NewBrokerStorageIntegration(
 	}
 }
 
-// NewBrokerStorageIntegrationService создает новый сервис интеграции (возвращает интерфейс)
+// NewBrokerStorageIntegrationService creates a new integration service (returns interface)
 func NewBrokerStorageIntegrationService(
 	brokerManager interfaces.BrokerManager,
 	storageService interfaces.StorageService,
@@ -82,19 +82,19 @@ func NewBrokerStorageIntegrationService(
 	return NewBrokerStorageIntegration(brokerManager, storageService, logger)
 }
 
-// Start запускает интеграцию всех брокеров с хранилищем
+// Start starts integration of all brokers with storage
 func (bis *BrokerStorageIntegration) Start(ctx context.Context) error {
 	bis.ctx, bis.cancel = context.WithCancel(ctx)
 
 	bis.logger.Info("Starting broker-storage integration")
 
-	// Получаем всех брокеров
+	// Get all brokers
 	brokers := bis.brokerManager.GetAllBrokers()
 
 	bis.mu.Lock()
 	defer bis.mu.Unlock()
 
-	// Запускаем интеграцию для каждого брокера
+	// Start integration for each broker
 	for brokerID, broker := range brokers {
 		if err := bis.startBrokerIntegrationUnsafe(brokerID, broker); err != nil {
 			bis.logger.WithError(err).WithField("broker_id", brokerID).Error("Failed to start broker integration")
@@ -108,7 +108,7 @@ func (bis *BrokerStorageIntegration) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop останавливает интеграцию
+// Stop stops integration
 func (bis *BrokerStorageIntegration) Stop() error {
 	bis.logger.Info("Stopping broker-storage integration")
 
@@ -119,19 +119,19 @@ func (bis *BrokerStorageIntegration) Stop() error {
 	bis.mu.Lock()
 	defer bis.mu.Unlock()
 
-	// Останавливаем все интеграции брокеров
+	// Stop all broker integrations
 	for brokerID, integration := range bis.integrations {
 		bis.stopBrokerIntegrationUnsafe(brokerID, integration)
 	}
 
-	// Ждем завершения всех воркеров
+	// Wait for all workers to complete
 	bis.wg.Wait()
 
 	bis.logger.Info("Broker-storage integration stopped")
 	return nil
 }
 
-// AddBroker добавляет новый брокер в интеграцию
+// AddBroker adds a new broker to integration
 func (bis *BrokerStorageIntegration) AddBroker(brokerID string, broker interfaces.Broker) error {
 	bis.mu.Lock()
 	defer bis.mu.Unlock()
@@ -150,7 +150,7 @@ func (bis *BrokerStorageIntegration) AddBroker(brokerID string, broker interface
 	return nil
 }
 
-// RemoveBroker удаляет брокер из интеграции
+// RemoveBroker removes a broker from integration
 func (bis *BrokerStorageIntegration) RemoveBroker(brokerID string) error {
 	bis.mu.Lock()
 	defer bis.mu.Unlock()
@@ -169,14 +169,14 @@ func (bis *BrokerStorageIntegration) RemoveBroker(brokerID string) error {
 	return nil
 }
 
-// GetStats возвращает статистику интеграции
+// GetStats returns integration statistics
 func (bis *BrokerStorageIntegration) GetStats() IntegrationStats {
 	bis.statsMu.RLock()
 	defer bis.statsMu.RUnlock()
 	return bis.stats
 }
 
-// GetBrokerStats возвращает статистику по конкретному брокеру
+// GetBrokerStats returns statistics for a specific broker
 func (bis *BrokerStorageIntegration) GetBrokerStats(brokerID string) (BrokerIntegrationStats, error) {
 	bis.mu.RLock()
 	defer bis.mu.RUnlock()
@@ -191,7 +191,7 @@ func (bis *BrokerStorageIntegration) GetBrokerStats(brokerID string) (BrokerInte
 	return integration.stats, nil
 }
 
-// Health проверяет здоровье интеграции
+// Health checks integration health
 func (bis *BrokerStorageIntegration) Health() error {
 	bis.mu.RLock()
 	defer bis.mu.RUnlock()
@@ -200,7 +200,7 @@ func (bis *BrokerStorageIntegration) Health() error {
 		return fmt.Errorf("no active broker integrations")
 	}
 
-	// Проверяем, что данные поступают
+	// Check that data is being received
 	bis.statsMu.RLock()
 	lastData := bis.stats.LastDataReceived
 	bis.statsMu.RUnlock()
@@ -212,7 +212,7 @@ func (bis *BrokerStorageIntegration) Health() error {
 	return nil
 }
 
-// startBrokerIntegrationUnsafe запускает интеграцию для брокера (без блокировки)
+// startBrokerIntegrationUnsafe starts integration for broker (without locking)
 func (bis *BrokerStorageIntegration) startBrokerIntegrationUnsafe(brokerID string, broker interfaces.Broker) error {
 	integration := &BrokerIntegration{
 		brokerID: brokerID,
@@ -224,7 +224,7 @@ func (bis *BrokerStorageIntegration) startBrokerIntegrationUnsafe(brokerID strin
 		},
 	}
 
-	// Запускаем воркеры для обработки данных
+	// Start workers for data processing
 	integration.wg.Add(3)
 	go bis.tickerWorker(integration)
 	go bis.candleWorker(integration)
@@ -236,14 +236,14 @@ func (bis *BrokerStorageIntegration) startBrokerIntegrationUnsafe(brokerID strin
 	return nil
 }
 
-// stopBrokerIntegrationUnsafe останавливает интеграцию брокера (без блокировки)
+// stopBrokerIntegrationUnsafe stops broker integration (without locking)
 func (bis *BrokerStorageIntegration) stopBrokerIntegrationUnsafe(brokerID string, integration *BrokerIntegration) {
 	close(integration.stopChan)
 	integration.wg.Wait()
 	bis.logger.WithField("broker_id", brokerID).Info("Broker integration stopped")
 }
 
-// updateStatsUnsafe обновляет общую статистику (без блокировки)
+// updateStatsUnsafe updates overall statistics (without locking)
 func (bis *BrokerStorageIntegration) updateStatsUnsafe() {
 	bis.statsMu.Lock()
 	defer bis.statsMu.Unlock()
@@ -251,7 +251,7 @@ func (bis *BrokerStorageIntegration) updateStatsUnsafe() {
 	bis.stats.ActiveBrokers = len(bis.integrations)
 }
 
-// tickerWorker обрабатывает тикеры от брокера
+// tickerWorker processes tickers from broker
 func (bis *BrokerStorageIntegration) tickerWorker(integration *BrokerIntegration) {
 	defer integration.wg.Done()
 
@@ -293,7 +293,7 @@ func (bis *BrokerStorageIntegration) tickerWorker(integration *BrokerIntegration
 	}
 }
 
-// candleWorker обрабатывает свечи от брокера
+// candleWorker processes candles from broker
 func (bis *BrokerStorageIntegration) candleWorker(integration *BrokerIntegration) {
 	defer integration.wg.Done()
 
@@ -335,7 +335,7 @@ func (bis *BrokerStorageIntegration) candleWorker(integration *BrokerIntegration
 	}
 }
 
-// orderBookWorker обрабатывает ордербуки от брокера
+// orderBookWorker processes order books from broker
 func (bis *BrokerStorageIntegration) orderBookWorker(integration *BrokerIntegration) {
 	defer integration.wg.Done()
 
@@ -377,12 +377,12 @@ func (bis *BrokerStorageIntegration) orderBookWorker(integration *BrokerIntegrat
 	}
 }
 
-// processTicker обрабатывает тикер и сохраняет его в хранилище
+// processTicker processes ticker and saves it to storage
 func (bis *BrokerStorageIntegration) processTicker(integration *BrokerIntegration, ticker entities.Ticker) error {
-	// Добавляем информацию о брокере к тикеру
+	// Add broker information to ticker
 	ticker.BrokerID = integration.brokerID
 
-	// Сохраняем тикер через StorageService
+	// Save ticker through StorageService
 	ctx, cancel := context.WithTimeout(bis.ctx, 10*time.Second)
 	defer cancel()
 
@@ -390,7 +390,7 @@ func (bis *BrokerStorageIntegration) processTicker(integration *BrokerIntegratio
 		return fmt.Errorf("failed to save ticker: %w", err)
 	}
 
-	// Обновляем статистику
+	// Update statistics
 	now := time.Now()
 
 	integration.mu.Lock()
@@ -412,12 +412,12 @@ func (bis *BrokerStorageIntegration) processTicker(integration *BrokerIntegratio
 	return nil
 }
 
-// processCandle обрабатывает свечу и сохраняет её в хранилище
+// processCandle processes candle and saves it to storage
 func (bis *BrokerStorageIntegration) processCandle(integration *BrokerIntegration, candle entities.Candle) error {
-	// Добавляем информацию о брокере к свече
+	// Add broker information to candle
 	candle.BrokerID = integration.brokerID
 
-	// Сохраняем свечу через StorageService
+	// Save candle through StorageService
 	ctx, cancel := context.WithTimeout(bis.ctx, 10*time.Second)
 	defer cancel()
 
@@ -425,7 +425,7 @@ func (bis *BrokerStorageIntegration) processCandle(integration *BrokerIntegratio
 		return fmt.Errorf("failed to save candle: %w", err)
 	}
 
-	// Обновляем статистику
+	// Update statistics
 	now := time.Now()
 
 	integration.mu.Lock()
@@ -449,12 +449,12 @@ func (bis *BrokerStorageIntegration) processCandle(integration *BrokerIntegratio
 	return nil
 }
 
-// processOrderBook обрабатывает ордербук и сохраняет его в хранилище
+// processOrderBook processes order book and saves it to storage
 func (bis *BrokerStorageIntegration) processOrderBook(integration *BrokerIntegration, orderBook entities.OrderBook) error {
-	// Добавляем информацию о брокере к ордербуку
+	// Add broker information to order book
 	orderBook.BrokerID = integration.brokerID
 
-	// Сохраняем ордербук через StorageService
+	// Save order book through StorageService
 	ctx, cancel := context.WithTimeout(bis.ctx, 10*time.Second)
 	defer cancel()
 
@@ -462,7 +462,7 @@ func (bis *BrokerStorageIntegration) processOrderBook(integration *BrokerIntegra
 		return fmt.Errorf("failed to save orderbook: %w", err)
 	}
 
-	// Обновляем статистику
+	// Update statistics
 	now := time.Now()
 
 	integration.mu.Lock()

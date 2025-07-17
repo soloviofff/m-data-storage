@@ -16,16 +16,16 @@ import (
 	"m-data-storage/pkg/broker"
 )
 
-// ErrNotFound - ошибка, когда конфигурация не найдена
+// ErrNotFound - error when configuration is not found
 var ErrNotFound = errors.New("configuration not found")
 
-// Service - сервис для работы с конфигурацией
+// Service - service for working with configuration
 type Service struct {
 	repo Repository
 	db   *sql.DB
 }
 
-// NewService - создает новый экземпляр сервиса
+// NewService - creates a new service instance
 func NewService(repo Repository) (*Service, error) {
 	if repo == nil {
 		return nil, errors.New("repository is required")
@@ -116,7 +116,7 @@ func initSchema(db *sql.DB) error {
 	return nil
 }
 
-// validateSystemConfig - проверяет корректность системной конфигурации
+// validateSystemConfig - validates system configuration correctness
 func validateSystemConfig(cfg dto.SystemConfig) error {
 	if cfg.StorageRetention <= 0 {
 		return errors.New("storage retention must be positive")
@@ -158,7 +158,7 @@ func validateSystemConfig(cfg dto.SystemConfig) error {
 	return nil
 }
 
-// validateBrokerConfig - проверяет корректность конфигурации брокера
+// validateBrokerConfig - validates broker configuration correctness
 func validateBrokerConfig(cfg broker.BrokerConfig) error {
 	if cfg.ID == "" {
 		return errors.New("broker ID is required")

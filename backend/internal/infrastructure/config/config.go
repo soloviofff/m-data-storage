@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config - основная конфигурация приложения
+// Config - main application configuration
 type Config struct {
 	App      AppConfig      `yaml:"app" env-prefix:"APP_"`
 	Database DatabaseConfig `yaml:"database" env-prefix:"DB_"`
@@ -20,7 +20,7 @@ type Config struct {
 	Brokers  BrokersConfig  `yaml:"brokers" env-prefix:"BROKERS_"`
 }
 
-// AppConfig - конфигурация приложения
+// AppConfig - application configuration
 type AppConfig struct {
 	Name        string        `yaml:"name" env:"NAME" envDefault:"m-data-storage"`
 	Version     string        `yaml:"version" env:"VERSION" envDefault:"1.0.0"`
@@ -29,7 +29,7 @@ type AppConfig struct {
 	Timeout     time.Duration `yaml:"timeout" env:"TIMEOUT" envDefault:"30s"`
 }
 
-// DatabaseConfig - конфигурация базы данных
+// DatabaseConfig - database configuration
 type DatabaseConfig struct {
 	SQLite  SQLiteConfig  `yaml:"sqlite" env-prefix:"SQLITE_"`
 	QuestDB QuestDBConfig `yaml:"questdb" env-prefix:"QUESTDB_"`
@@ -58,7 +58,7 @@ type QuestDBConfig struct {
 	QueryTimeout    time.Duration `yaml:"query_timeout" env:"QUERY_TIMEOUT" envDefault:"30s"`
 }
 
-// APIConfig - конфигурация API
+// APIConfig - API configuration
 type APIConfig struct {
 	Host            string        `yaml:"host" env:"HOST" envDefault:"0.0.0.0"`
 	Port            int           `yaml:"port" env:"PORT" envDefault:"8080"`
@@ -69,7 +69,7 @@ type APIConfig struct {
 	Auth            AuthConfig    `yaml:"auth" env-prefix:"AUTH_"`
 }
 
-// CORSConfig - конфигурация CORS
+// CORSConfig - CORS configuration
 type CORSConfig struct {
 	AllowedOrigins []string `yaml:"allowed_origins" env:"ALLOWED_ORIGINS" envSeparator:","`
 	AllowedMethods []string `yaml:"allowed_methods" env:"ALLOWED_METHODS" envSeparator:"," envDefault:"GET,POST,PUT,DELETE,OPTIONS"`
@@ -84,7 +84,7 @@ type AuthConfig struct {
 	Enabled      bool          `yaml:"enabled" env:"ENABLED" envDefault:"false"`
 }
 
-// LoggingConfig - конфигурация логирования
+// LoggingConfig - logging configuration
 type LoggingConfig struct {
 	Level      string `yaml:"level" env:"LEVEL" envDefault:"info"`
 	Format     string `yaml:"format" env:"FORMAT" envDefault:"json"`
@@ -96,16 +96,16 @@ type LoggingConfig struct {
 	Compress   bool   `yaml:"compress" env:"COMPRESS" envDefault:"true"`
 }
 
-// StorageConfig - конфигурация хранилища
+// StorageConfig - storage configuration
 type StorageConfig struct {
-	RetentionPeriod time.Duration `yaml:"retention_period" env:"RETENTION_PERIOD" envDefault:"720h"` // 30 дней
+	RetentionPeriod time.Duration `yaml:"retention_period" env:"RETENTION_PERIOD" envDefault:"720h"` // 30 days
 	VacuumInterval  time.Duration `yaml:"vacuum_interval" env:"VACUUM_INTERVAL" envDefault:"24h"`
 	MaxStorageSize  int64         `yaml:"max_storage_size" env:"MAX_STORAGE_SIZE" envDefault:"10737418240"` // 10GB
 	BatchSize       int           `yaml:"batch_size" env:"BATCH_SIZE" envDefault:"1000"`
 	FlushInterval   time.Duration `yaml:"flush_interval" env:"FLUSH_INTERVAL" envDefault:"5s"`
 }
 
-// BrokersConfig - конфигурация брокеров
+// BrokersConfig - brokers configuration
 type BrokersConfig struct {
 	ConfigPath          string        `yaml:"config_path" env:"CONFIG_PATH" envDefault:"./configs/brokers"`
 	ReconnectDelay      time.Duration `yaml:"reconnect_delay" env:"RECONNECT_DELAY" envDefault:"5s"`
@@ -113,11 +113,11 @@ type BrokersConfig struct {
 	HealthCheckInterval time.Duration `yaml:"health_check_interval" env:"HEALTH_CHECK_INTERVAL" envDefault:"30s"`
 }
 
-// Load загружает конфигурацию из файла и переменных окружения
+// Load loads configuration from file and environment variables
 func Load(configPath string) (*Config, error) {
 	config := &Config{}
 
-	// Загружаем из файла, если он существует
+	// Load from file if it exists
 	if configPath != "" {
 		if _, err := os.Stat(configPath); err == nil {
 			data, err := os.ReadFile(configPath)
@@ -131,12 +131,12 @@ func Load(configPath string) (*Config, error) {
 		}
 	}
 
-	// Переопределяем переменными окружения
+	// Override with environment variables
 	if err := env.Parse(config); err != nil {
 		return nil, errors.Wrap(err, "failed to parse environment variables")
 	}
 
-	// Валидируем конфигурацию
+	// Validate configuration
 	if err := config.Validate(); err != nil {
 		return nil, errors.Wrap(err, "config validation failed")
 	}
@@ -144,7 +144,7 @@ func Load(configPath string) (*Config, error) {
 	return config, nil
 }
 
-// Validate проверяет валидность конфигурации
+// Validate checks configuration validity
 func (c *Config) Validate() error {
 	if c.App.Name == "" {
 		return errors.New("app name is required")

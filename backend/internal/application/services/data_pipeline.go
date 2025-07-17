@@ -12,47 +12,47 @@ import (
 	"m-data-storage/internal/domain/interfaces"
 )
 
-// DataPipelineService управляет потоками данных от брокеров к хранилищу
+// DataPipelineService manages data flows from brokers to storage
 type DataPipelineService struct {
 	brokerManager      interfaces.BrokerManager
 	storageIntegration interfaces.BrokerStorageIntegration
 	logger             *logrus.Logger
 
-	// Управление жизненным циклом
+	// Lifecycle management
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 
-	// Конфигурация
+	// Configuration
 	config DataPipelineConfig
 
-	// Статистика
+	// Statistics
 	stats PipelineStats
 	mu    sync.RWMutex
 }
 
-// DataPipelineConfig содержит конфигурацию пайплайна данных
+// DataPipelineConfig contains data pipeline configuration
 type DataPipelineConfig struct {
-	// Автоматическое подключение брокеров
+	// Automatic broker connection
 	AutoConnectBrokers bool `yaml:"auto_connect_brokers" json:"auto_connect_brokers"`
 
-	// Интервал проверки здоровья
+	// Health check interval
 	HealthCheckInterval time.Duration `yaml:"health_check_interval" json:"health_check_interval"`
 
-	// Таймаут для операций
+	// Operation timeout
 	OperationTimeout time.Duration `yaml:"operation_timeout" json:"operation_timeout"`
 
-	// Автоматическое переподключение
+	// Automatic reconnection
 	AutoReconnect bool `yaml:"auto_reconnect" json:"auto_reconnect"`
 
-	// Интервал переподключения
+	// Reconnection interval
 	ReconnectInterval time.Duration `yaml:"reconnect_interval" json:"reconnect_interval"`
 }
 
-// PipelineStats содержит статистику пайплайна
+// PipelineStats contains pipeline statistics
 type PipelineStats = interfaces.DataPipelineStats
 
-// DefaultDataPipelineConfig возвращает конфигурацию по умолчанию
+// DefaultDataPipelineConfig returns default configuration
 func DefaultDataPipelineConfig() DataPipelineConfig {
 	return DataPipelineConfig{
 		AutoConnectBrokers:  true,
@@ -63,7 +63,7 @@ func DefaultDataPipelineConfig() DataPipelineConfig {
 	}
 }
 
-// NewDataPipelineService создает новый сервис пайплайна данных
+// NewDataPipelineService creates a new data pipeline service
 func NewDataPipelineService(
 	brokerManager interfaces.BrokerManager,
 	storageIntegration interfaces.BrokerStorageIntegration,
@@ -85,25 +85,25 @@ func NewDataPipelineService(
 	}
 }
 
-// Start запускает пайплайн данных
+// Start starts the data pipeline
 func (dps *DataPipelineService) Start(ctx context.Context) error {
 	dps.ctx, dps.cancel = context.WithCancel(ctx)
 
 	dps.logger.Info("Starting data pipeline service")
 
-	// Запускаем интеграцию хранилища
+	// Start storage integration
 	if err := dps.storageIntegration.Start(dps.ctx); err != nil {
 		return fmt.Errorf("failed to start storage integration: %w", err)
 	}
 
-	// Подключаем существующие брокеры, если включено автоподключение
+	// Connect existing brokers if auto-connect is enabled
 	if dps.config.AutoConnectBrokers {
 		if err := dps.connectAllBrokers(); err != nil {
 			dps.logger.WithError(err).Warn("Failed to connect some brokers during startup")
 		}
 	}
 
-	// Запускаем фоновые задачи
+	// Start background tasks
 	dps.wg.Add(1)
 	go dps.healthCheckWorker()
 
@@ -120,7 +120,7 @@ func (dps *DataPipelineService) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop останавливает пайплайн данных
+// Stop stops the data pipeline
 func (dps *DataPipelineService) Stop() error {
 	dps.logger.Info("Stopping data pipeline service")
 
@@ -128,32 +128,32 @@ func (dps *DataPipelineService) Stop() error {
 		dps.cancel()
 	}
 
-	// Останавливаем интеграцию хранилища
+	// Stop storage integration
 	if err := dps.storageIntegration.Stop(); err != nil {
 		dps.logger.WithError(err).Error("Failed to stop storage integration")
 	}
 
-	// Ждем завершения фоновых задач
+	// Wait for background tasks to finish
 	dps.wg.Wait()
 
 	dps.logger.Info("Data pipeline service stopped")
 	return nil
 }
 
-// AddBroker добавляет брокер в пайплайн
+// AddBroker adds a broker to the pipeline
 func (dps *DataPipelineService) AddBroker(ctx context.Context, config interfaces.BrokerConfig) error {
-	// Добавляем брокер в менеджер
+	// Add broker to manager
 	if err := dps.brokerManager.AddBroker(ctx, config); err != nil {
 		return fmt.Errorf("failed to add broker to manager: %w", err)
 	}
 
-	// Получаем брокер из менеджера
+	// Get broker from manager
 	broker, err := dps.brokerManager.GetBroker(config.ID)
 	if err != nil {
 		return fmt.Errorf("failed to get broker from manager: %w", err)
 	}
 
-	// Подключаем брокер
+	// Connect broker
 	if err := dps.connectBroker(ctx, config.ID, broker); err != nil {
 		dps.logger.WithError(err).WithField("broker_id", config.ID).Error("Failed to connect broker")
 		return fmt.Errorf("failed to connect broker: %w", err)
@@ -163,19 +163,19 @@ func (dps *DataPipelineService) AddBroker(ctx context.Context, config interfaces
 	return nil
 }
 
-// RemoveBroker удаляет брокер из пайплайна
+// RemoveBroker removes a broker from the pipeline
 func (dps *DataPipelineService) RemoveBroker(ctx context.Context, brokerID string) error {
-	// Удаляем брокер из интеграции хранилища
+	// Remove broker from storage integration
 	if err := dps.storageIntegration.RemoveBroker(brokerID); err != nil {
 		dps.logger.WithError(err).WithField("broker_id", brokerID).Warn("Failed to remove broker from storage integration")
 	}
 
-	// Удаляем брокер из менеджера
+	// Remove broker from manager
 	if err := dps.brokerManager.RemoveBroker(ctx, brokerID); err != nil {
 		return fmt.Errorf("failed to remove broker from manager: %w", err)
 	}
 
-	// Обновляем статистику
+	// Update statistics
 	dps.updateStats(func(stats *PipelineStats) {
 		if stats.ConnectedBrokers > 0 {
 			stats.ConnectedBrokers--
@@ -186,7 +186,7 @@ func (dps *DataPipelineService) RemoveBroker(ctx context.Context, brokerID strin
 	return nil
 }
 
-// Subscribe подписывается на инструменты брокера
+// Subscribe subscribes to broker instruments
 func (dps *DataPipelineService) Subscribe(ctx context.Context, brokerID string, subscriptions []entities.InstrumentSubscription) error {
 	broker, err := dps.brokerManager.GetBroker(brokerID)
 	if err != nil {
@@ -205,7 +205,7 @@ func (dps *DataPipelineService) Subscribe(ctx context.Context, brokerID string, 
 	return nil
 }
 
-// Unsubscribe отписывается от инструментов брокера
+// Unsubscribe unsubscribes from broker instruments
 func (dps *DataPipelineService) Unsubscribe(ctx context.Context, brokerID string, subscriptions []entities.InstrumentSubscription) error {
 	broker, err := dps.brokerManager.GetBroker(brokerID)
 	if err != nil {
@@ -224,26 +224,26 @@ func (dps *DataPipelineService) Unsubscribe(ctx context.Context, brokerID string
 	return nil
 }
 
-// GetStats возвращает статистику пайплайна
+// GetStats returns pipeline statistics
 func (dps *DataPipelineService) GetStats() PipelineStats {
 	dps.mu.RLock()
 	defer dps.mu.RUnlock()
 	return dps.stats
 }
 
-// GetIntegrationStats возвращает статистику интеграции хранилища
+// GetIntegrationStats returns storage integration statistics
 func (dps *DataPipelineService) GetIntegrationStats() interfaces.BrokerStorageIntegrationStats {
 	return dps.storageIntegration.GetStats()
 }
 
-// Health проверяет здоровье пайплайна
+// Health checks pipeline health
 func (dps *DataPipelineService) Health() error {
-	// Проверяем интеграцию хранилища
+	// Check storage integration
 	if err := dps.storageIntegration.Health(); err != nil {
 		return fmt.Errorf("storage integration health check failed: %w", err)
 	}
 
-	// Проверяем брокеры
+	// Check brokers
 	brokerHealth := dps.brokerManager.Health()
 	for brokerID, err := range brokerHealth {
 		if err != nil {
@@ -254,7 +254,7 @@ func (dps *DataPipelineService) Health() error {
 	return nil
 }
 
-// connectAllBrokers подключает все брокеры из менеджера
+// connectAllBrokers connects all brokers from the manager
 func (dps *DataPipelineService) connectAllBrokers() error {
 	brokers := dps.brokerManager.GetAllBrokers()
 
@@ -274,19 +274,19 @@ func (dps *DataPipelineService) connectAllBrokers() error {
 	return nil
 }
 
-// connectBroker подключает отдельный брокер
+// connectBroker connects an individual broker
 func (dps *DataPipelineService) connectBroker(ctx context.Context, brokerID string, broker interfaces.Broker) error {
-	// Подключаем брокер
+	// Connect broker
 	if err := broker.Connect(ctx); err != nil {
 		return fmt.Errorf("failed to connect broker: %w", err)
 	}
 
-	// Запускаем брокер
+	// Start broker
 	if err := broker.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start broker: %w", err)
 	}
 
-	// Добавляем брокер в интеграцию хранилища
+	// Add broker to storage integration
 	if err := dps.storageIntegration.AddBroker(brokerID, broker); err != nil {
 		return fmt.Errorf("failed to add broker to storage integration: %w", err)
 	}
@@ -299,7 +299,7 @@ func (dps *DataPipelineService) connectBroker(ctx context.Context, brokerID stri
 	return nil
 }
 
-// healthCheckWorker выполняет периодические проверки здоровья
+// healthCheckWorker performs periodic health checks
 func (dps *DataPipelineService) healthCheckWorker() {
 	defer dps.wg.Done()
 
@@ -320,7 +320,7 @@ func (dps *DataPipelineService) healthCheckWorker() {
 	}
 }
 
-// reconnectWorker выполняет переподключение отключенных брокеров
+// reconnectWorker performs reconnection of disconnected brokers
 func (dps *DataPipelineService) reconnectWorker() {
 	defer dps.wg.Done()
 
@@ -341,7 +341,7 @@ func (dps *DataPipelineService) reconnectWorker() {
 	}
 }
 
-// performHealthCheck выполняет проверку здоровья
+// performHealthCheck performs a health check
 func (dps *DataPipelineService) performHealthCheck() {
 	dps.logger.Debug("Performing health check")
 
@@ -363,7 +363,7 @@ func (dps *DataPipelineService) performHealthCheck() {
 	}
 }
 
-// performReconnect пытается переподключить отключенные брокеры
+// performReconnect attempts to reconnect disconnected brokers
 func (dps *DataPipelineService) performReconnect() {
 	brokers := dps.brokerManager.GetAllBrokers()
 
@@ -383,7 +383,7 @@ func (dps *DataPipelineService) performReconnect() {
 	}
 }
 
-// updateStats обновляет статистику пайплайна
+// updateStats updates pipeline statistics
 func (dps *DataPipelineService) updateStats(updateFunc func(*PipelineStats)) {
 	dps.mu.Lock()
 	defer dps.mu.Unlock()

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// MarketType - тип рынка
+// MarketType - market type
 type MarketType string
 
 const (
@@ -14,7 +14,7 @@ const (
 	MarketTypeStock   MarketType = "stock"
 )
 
-// InstrumentType - тип инструмента
+// InstrumentType - instrument type
 type InstrumentType string
 
 const (
@@ -25,7 +25,7 @@ const (
 	InstrumentTypeBond    InstrumentType = "bond"
 )
 
-// Ticker представляет данные тикера с поддержкой разных типов рынков
+// Ticker represents ticker data with support for different market types
 type Ticker struct {
 	Symbol    string         `json:"symbol"`
 	Price     float64        `json:"price"`
@@ -35,7 +35,7 @@ type Ticker struct {
 	Timestamp time.Time      `json:"timestamp"`
 	BrokerID  string         `json:"broker_id"`
 
-	// Дополнительные поля для разных типов рынков
+	// Additional fields for different market types
 	Change        float64 `json:"change,omitempty"`
 	ChangePercent float64 `json:"change_percent,omitempty"`
 	High24h       float64 `json:"high_24h,omitempty"`
@@ -43,17 +43,17 @@ type Ticker struct {
 	Volume24h     float64 `json:"volume_24h,omitempty"`
 	PrevClose24h  float64 `json:"prev_close_24h,omitempty"`
 
-	// Для фьючерсов
+	// For futures
 	OpenInterest float64 `json:"open_interest,omitempty"`
 
-	// Для акций
+	// For stocks
 	BidPrice float64 `json:"bid_price,omitempty"`
 	AskPrice float64 `json:"ask_price,omitempty"`
 	BidSize  float64 `json:"bid_size,omitempty"`
 	AskSize  float64 `json:"ask_size,omitempty"`
 }
 
-// IsValid проверяет валидность тикера
+// IsValid checks ticker validity
 func (t *Ticker) IsValid() bool {
 	if t.Symbol == "" {
 		return false
@@ -73,12 +73,12 @@ func (t *Ticker) IsValid() bool {
 	return true
 }
 
-// GetDisplayPrice возвращает цену для отображения с учетом типа инструмента
+// GetDisplayPrice returns price for display considering instrument type
 func (t *Ticker) GetDisplayPrice() float64 {
 	return t.Price
 }
 
-// GetSpread возвращает спред между bid и ask для акций
+// GetSpread returns spread between bid and ask for stocks
 func (t *Ticker) GetSpread() float64 {
 	if t.Type == InstrumentTypeStock && t.BidPrice > 0 && t.AskPrice > 0 {
 		return t.AskPrice - t.BidPrice
@@ -86,7 +86,7 @@ func (t *Ticker) GetSpread() float64 {
 	return 0
 }
 
-// GetMidPrice возвращает среднюю цену между bid и ask
+// GetMidPrice returns mid price between bid and ask
 func (t *Ticker) GetMidPrice() float64 {
 	if t.Type == InstrumentTypeStock && t.BidPrice > 0 && t.AskPrice > 0 {
 		return (t.BidPrice + t.AskPrice) / 2
@@ -94,7 +94,7 @@ func (t *Ticker) GetMidPrice() float64 {
 	return t.Price
 }
 
-// Validate проверяет валидность тикера
+// Validate checks ticker validity
 func (t *Ticker) Validate() error {
 	if t.Symbol == "" {
 		return fmt.Errorf("symbol cannot be empty")
@@ -114,7 +114,7 @@ func (t *Ticker) Validate() error {
 	return nil
 }
 
-// GetPriceChange24h возвращает изменение цены за 24 часа
+// GetPriceChange24h returns price change over 24 hours
 func (t *Ticker) GetPriceChange24h() float64 {
 	if t.PrevClose24h > 0 {
 		return t.Price - t.PrevClose24h
@@ -122,7 +122,7 @@ func (t *Ticker) GetPriceChange24h() float64 {
 	return 0
 }
 
-// GetPriceChangePercent24h возвращает процентное изменение цены за 24 часа
+// GetPriceChangePercent24h returns percentage price change over 24 hours
 func (t *Ticker) GetPriceChangePercent24h() float64 {
 	if t.PrevClose24h > 0 {
 		return (t.Price - t.PrevClose24h) / t.PrevClose24h * 100
@@ -130,7 +130,7 @@ func (t *Ticker) GetPriceChangePercent24h() float64 {
 	return 0
 }
 
-// IsValidForMarket проверяет соответствие типа инструмента и рынка
+// IsValidForMarket checks instrument type and market compatibility
 func (t *Ticker) IsValidForMarket() bool {
 	switch t.Market {
 	case MarketTypeSpot:

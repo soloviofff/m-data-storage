@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Candle представляет свечу с поддержкой разных типов рынков
+// Candle represents a candle with support for different market types
 type Candle struct {
 	Symbol    string         `json:"symbol"`
 	Open      float64        `json:"open"`
@@ -19,15 +19,15 @@ type Candle struct {
 	Timeframe string         `json:"timeframe"`
 	BrokerID  string         `json:"broker_id"`
 
-	// Дополнительные поля
+	// Additional fields
 	Trades      int64   `json:"trades,omitempty"`
 	QuoteVolume float64 `json:"quote_volume,omitempty"`
 
-	// Для фьючерсов
+	// For futures
 	OpenInterest float64 `json:"open_interest,omitempty"`
 }
 
-// IsValid проверяет валидность свечи
+// IsValid checks candle validity
 func (c *Candle) IsValid() bool {
 	if c.Symbol == "" {
 		return false
@@ -59,7 +59,7 @@ func (c *Candle) IsValid() bool {
 	return true
 }
 
-// GetBodySize возвращает размер тела свечи
+// GetBodySize returns candle body size
 func (c *Candle) GetBodySize() float64 {
 	if c.Close > c.Open {
 		return c.Close - c.Open
@@ -67,7 +67,7 @@ func (c *Candle) GetBodySize() float64 {
 	return c.Open - c.Close
 }
 
-// GetUpperShadow возвращает размер верхней тени
+// GetUpperShadow returns upper shadow size
 func (c *Candle) GetUpperShadow() float64 {
 	if c.Close > c.Open {
 		return c.High - c.Close
@@ -75,7 +75,7 @@ func (c *Candle) GetUpperShadow() float64 {
 	return c.High - c.Open
 }
 
-// GetLowerShadow возвращает размер нижней тени
+// GetLowerShadow returns lower shadow size
 func (c *Candle) GetLowerShadow() float64 {
 	if c.Close > c.Open {
 		return c.Open - c.Low
@@ -83,37 +83,37 @@ func (c *Candle) GetLowerShadow() float64 {
 	return c.Close - c.Low
 }
 
-// IsBullish проверяет, является ли свеча бычьей
+// IsBullish checks if candle is bullish
 func (c *Candle) IsBullish() bool {
 	return c.Close > c.Open
 }
 
-// IsBearish проверяет, является ли свеча медвежьей
+// IsBearish checks if candle is bearish
 func (c *Candle) IsBearish() bool {
 	return c.Close < c.Open
 }
 
-// IsDoji проверяет, является ли свеча доджи
+// IsDoji checks if candle is a doji
 func (c *Candle) IsDoji() bool {
 	return c.Close == c.Open
 }
 
-// GetRange возвращает диапазон свечи
+// GetRange returns candle range
 func (c *Candle) GetRange() float64 {
 	return c.High - c.Low
 }
 
-// GetTypicalPrice возвращает типичную цену (HLC/3)
+// GetTypicalPrice returns typical price (HLC/3)
 func (c *Candle) GetTypicalPrice() float64 {
 	return (c.High + c.Low + c.Close) / 3
 }
 
-// GetWeightedPrice возвращает взвешенную цену (HLCC/4)
+// GetWeightedPrice returns weighted price (HLCC/4)
 func (c *Candle) GetWeightedPrice() float64 {
 	return (c.High + c.Low + c.Close + c.Close) / 4
 }
 
-// Validate проверяет валидность свечи
+// Validate checks candle validity
 func (c *Candle) Validate() error {
 	if c.Symbol == "" {
 		return fmt.Errorf("symbol cannot be empty")
