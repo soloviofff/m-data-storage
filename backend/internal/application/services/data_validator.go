@@ -475,3 +475,18 @@ func (v *DataValidatorService) validateDataType(dataType entities.DataType) erro
 		return errors.Errorf("invalid data type: %s", dataType)
 	}
 }
+
+// ValidateMarketType validates market type string (public interface method)
+func (v *DataValidatorService) ValidateMarketType(marketType string) error {
+	return v.validateMarketType(entities.MarketType(marketType))
+}
+
+// ValidateInstrumentType validates instrument type string (public interface method)
+func (v *DataValidatorService) ValidateInstrumentType(instrumentType string) error {
+	return v.validateInstrumentType(entities.InstrumentType(instrumentType))
+}
+
+// ValidateTimeframe validates timeframe string (public interface method)
+func (v *DataValidatorService) ValidateTimeframe(timeframe string) error {
+	return v.validateTimeframe(timeframe)
+}

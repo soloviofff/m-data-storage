@@ -110,6 +110,16 @@ func (m *MockDataValidator) ValidateInstrumentType(instrumentType string) error 
 	return args.Error(0)
 }
 
+func (m *MockDataValidator) ValidateInstrument(instrument entities.InstrumentInfo) error {
+	args := m.Called(instrument)
+	return args.Error(0)
+}
+
+func (m *MockDataValidator) ValidateSubscription(subscription entities.InstrumentSubscription) error {
+	args := m.Called(subscription)
+	return args.Error(0)
+}
+
 func TestNewStorageService(t *testing.T) {
 	mockStorage := &MockStorageManager{}
 	mockValidator := &MockDataValidator{}

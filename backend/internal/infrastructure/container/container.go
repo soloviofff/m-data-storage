@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"m-data-storage/internal/application/services"
+	"m-data-storage/internal/domain/interfaces"
 	"m-data-storage/internal/infrastructure/config"
 	"m-data-storage/internal/infrastructure/logger"
 	configservice "m-data-storage/internal/service/config"
@@ -81,6 +82,16 @@ func (c *Container) InitializeServices() error {
 	// TODO: Инициализировать StorageManager и StorageService
 	// Пока оставляем как TODO, так как нужна конфигурация для подключения к БД
 
+	// Создаем заглушку InstrumentManager для API endpoints
+	// В будущем это будет заменено на полную реализацию с StorageManager и DataPipeline
+	instrumentManager := services.NewInstrumentManagerService(
+		nil, // metadataStorage - пока nil, будет добавлено позже
+		nil, // dataPipeline - пока nil, будет добавлено позже
+		dataValidator,
+		c.logger.Logger, // Use the underlying logrus.Logger
+	)
+	c.Register("instrument.manager", instrumentManager)
+
 	c.logger.Info("All services initialized successfully")
 	return nil
 }
@@ -113,6 +124,21 @@ func (c *Container) GetDataValidator() (*services.DataValidatorService, error) {
 	}
 
 	return validator, nil
+}
+
+// GetInstrumentManager returns the instrument manager service
+func (c *Container) GetInstrumentManager() (interfaces.InstrumentManager, error) {
+	svc, err := c.Get("instrument.manager")
+	if err != nil {
+		return nil, err
+	}
+
+	instrumentManager, ok := svc.(interfaces.InstrumentManager)
+	if !ok {
+		return nil, fmt.Errorf("service is not an InstrumentManager")
+	}
+
+	return instrumentManager, nil
 }
 
 // Shutdown корректно завершает работу всех сервисов

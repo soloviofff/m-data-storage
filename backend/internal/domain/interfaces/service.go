@@ -58,6 +58,8 @@ type DataValidator interface {
 	ValidateTimeframe(timeframe string) error
 	ValidateMarketType(marketType string) error
 	ValidateInstrumentType(instrumentType string) error
+	ValidateInstrument(instrument entities.InstrumentInfo) error
+	ValidateSubscription(subscription entities.InstrumentSubscription) error
 }
 
 // StorageService - интерфейс для высокоуровневых операций с хранилищем

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"m-data-storage/api/handlers"
 	"m-data-storage/api/middleware"
 	"m-data-storage/internal/infrastructure/config"
 	"m-data-storage/internal/infrastructure/container"
@@ -16,11 +17,13 @@ import (
 
 // Server представляет HTTP сервер
 type Server struct {
-	httpServer *http.Server
-	router     *mux.Router
-	container  *container.Container
-	logger     *logger.Logger
-	config     *config.Config
+	httpServer          *http.Server
+	router              *mux.Router
+	container           *container.Container
+	logger              *logger.Logger
+	config              *config.Config
+	instrumentHandler   *handlers.InstrumentHandler
+	subscriptionHandler *handlers.SubscriptionHandler
 }
 
 // NewServer создает новый HTTP сервер
@@ -43,6 +46,21 @@ func NewServer(cfg *config.Config, container *container.Container, logger *logge
 	}
 
 	return server
+}
+
+// SetupHandlers initializes HTTP handlers
+func (s *Server) SetupHandlers() error {
+	// Get InstrumentManager from container
+	instrumentManager, err := s.container.GetInstrumentManager()
+	if err != nil {
+		s.logger.WithError(err).Warn("InstrumentManager not available, instrument endpoints will be disabled")
+	} else {
+		s.instrumentHandler = handlers.NewInstrumentHandler(instrumentManager, s.logger)
+		s.subscriptionHandler = handlers.NewSubscriptionHandler(instrumentManager, s.logger)
+		s.logger.Info("Instrument and subscription handlers initialized")
+	}
+
+	return nil
 }
 
 // SetupMiddleware настраивает middleware
@@ -90,6 +108,41 @@ func (s *Server) SetupRoutes() {
 	apiV1.HandleFunc("/brokers", s.notImplementedHandler).Methods("GET")
 	apiV1.HandleFunc("/brokers/{id}", s.notImplementedHandler).Methods("GET")
 	apiV1.HandleFunc("/brokers/{id}/status", s.notImplementedHandler).Methods("GET")
+
+	// Instrument management endpoints
+	if s.instrumentHandler != nil {
+		apiV1.HandleFunc("/instruments", s.instrumentHandler.ListInstruments).Methods("GET")
+		apiV1.HandleFunc("/instruments", s.instrumentHandler.CreateInstrument).Methods("POST")
+		apiV1.HandleFunc("/instruments/{symbol}", s.instrumentHandler.GetInstrument).Methods("GET")
+		apiV1.HandleFunc("/instruments/{symbol}", s.instrumentHandler.UpdateInstrument).Methods("PUT")
+		apiV1.HandleFunc("/instruments/{symbol}", s.instrumentHandler.DeleteInstrument).Methods("DELETE")
+
+		// Subscription endpoints for specific instruments
+		apiV1.HandleFunc("/instruments/{symbol}/subscriptions", s.instrumentHandler.CreateSubscription).Methods("POST")
+	} else {
+		apiV1.HandleFunc("/instruments", s.notImplementedHandler).Methods("GET")
+		apiV1.HandleFunc("/instruments", s.notImplementedHandler).Methods("POST")
+		apiV1.HandleFunc("/instruments/{symbol}", s.notImplementedHandler).Methods("GET")
+		apiV1.HandleFunc("/instruments/{symbol}", s.notImplementedHandler).Methods("PUT")
+		apiV1.HandleFunc("/instruments/{symbol}", s.notImplementedHandler).Methods("DELETE")
+	}
+
+	// Subscription management endpoints
+	if s.subscriptionHandler != nil {
+		apiV1.HandleFunc("/subscriptions", s.subscriptionHandler.ListSubscriptions).Methods("GET")
+		apiV1.HandleFunc("/subscriptions/{id}", s.subscriptionHandler.GetSubscription).Methods("GET")
+		apiV1.HandleFunc("/subscriptions/{id}", s.subscriptionHandler.UpdateSubscription).Methods("PUT")
+		apiV1.HandleFunc("/subscriptions/{id}", s.subscriptionHandler.DeleteSubscription).Methods("DELETE")
+
+		// Subscription control endpoints
+		apiV1.HandleFunc("/subscriptions/{id}/start", s.subscriptionHandler.StartTracking).Methods("POST")
+		apiV1.HandleFunc("/subscriptions/{id}/stop", s.subscriptionHandler.StopTracking).Methods("POST")
+	} else {
+		apiV1.HandleFunc("/subscriptions", s.notImplementedHandler).Methods("GET")
+		apiV1.HandleFunc("/subscriptions/{id}", s.notImplementedHandler).Methods("GET")
+		apiV1.HandleFunc("/subscriptions/{id}", s.notImplementedHandler).Methods("PUT")
+		apiV1.HandleFunc("/subscriptions/{id}", s.notImplementedHandler).Methods("DELETE")
+	}
 
 	// Data endpoints (заглушки для будущей реализации)
 	apiV1.HandleFunc("/data/tickers", s.notImplementedHandler).Methods("GET")
