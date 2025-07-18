@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"m-data-storage/internal/domain/entities"
@@ -377,6 +378,101 @@ func (r *MetadataRepository) ListSubscriptions(ctx context.Context) ([]entities.
 		// Set type and market
 		subscription.Type = entities.InstrumentType(subscriptionType)
 		subscription.Market = entities.MarketType(market)
+
+		// Unmarshal JSON fields
+		if err := json.Unmarshal([]byte(dataTypesJSON), &subscription.DataTypes); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal data types: %w", err)
+		}
+
+		if err := json.Unmarshal([]byte(settingsJSON), &subscription.Settings); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal settings: %w", err)
+		}
+
+		subscription.CreatedAt = createdAt
+		subscription.UpdatedAt = updatedAt
+
+		subscriptions = append(subscriptions, subscription)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate subscriptions: %w", err)
+	}
+
+	return subscriptions, nil
+}
+
+// GetSubscriptions retrieves subscriptions with filtering
+func (r *MetadataRepository) GetSubscriptions(ctx context.Context, filter interfaces.SubscriptionFilter) ([]entities.InstrumentSubscription, error) {
+	query := `SELECT id, symbol, type, market, data_types, start_date, settings, broker_id, is_active,
+		created_at, updated_at
+		FROM subscriptions WHERE 1=1`
+
+	var args []interface{}
+
+	// Apply filters
+	if len(filter.Symbols) > 0 {
+		placeholders := make([]string, len(filter.Symbols))
+		for i, symbol := range filter.Symbols {
+			placeholders[i] = "?"
+			args = append(args, symbol)
+		}
+		query += " AND symbol IN (" + strings.Join(placeholders, ",") + ")"
+	}
+
+	if len(filter.BrokerIDs) > 0 {
+		placeholders := make([]string, len(filter.BrokerIDs))
+		for i, brokerID := range filter.BrokerIDs {
+			placeholders[i] = "?"
+			args = append(args, brokerID)
+		}
+		query += " AND broker_id IN (" + strings.Join(placeholders, ",") + ")"
+	}
+
+	if filter.Active != nil {
+		query += " AND is_active = ?"
+		args = append(args, *filter.Active)
+	}
+
+	query += " ORDER BY created_at DESC"
+
+	if filter.Limit > 0 {
+		query += " LIMIT ?"
+		args = append(args, filter.Limit)
+
+		if filter.Offset > 0 {
+			query += " OFFSET ?"
+			args = append(args, filter.Offset)
+		}
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query subscriptions: %w", err)
+	}
+	defer rows.Close()
+
+	var subscriptions []entities.InstrumentSubscription
+	for rows.Next() {
+		var subscription entities.InstrumentSubscription
+		var dataTypesJSON, settingsJSON string
+		var createdAt, updatedAt time.Time
+
+		err := rows.Scan(
+			&subscription.ID,
+			&subscription.Symbol,
+			&subscription.Type,
+			&subscription.Market,
+			&dataTypesJSON,
+			&subscription.StartDate,
+			&settingsJSON,
+			&subscription.BrokerID,
+			&subscription.IsActive,
+			&createdAt,
+			&updatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan subscription: %w", err)
+		}
 
 		// Unmarshal JSON fields
 		if err := json.Unmarshal([]byte(dataTypesJSON), &subscription.DataTypes); err != nil {

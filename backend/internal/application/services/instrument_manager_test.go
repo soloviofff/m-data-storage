@@ -56,6 +56,11 @@ func (m *MockMetadataStorage) ListSubscriptions(ctx context.Context) ([]entities
 	return args.Get(0).([]entities.InstrumentSubscription), args.Error(1)
 }
 
+func (m *MockMetadataStorage) GetSubscriptions(ctx context.Context, filter interfaces.SubscriptionFilter) ([]entities.InstrumentSubscription, error) {
+	args := m.Called(ctx, filter)
+	return args.Get(0).([]entities.InstrumentSubscription), args.Error(1)
+}
+
 func (m *MockMetadataStorage) DeleteSubscription(ctx context.Context, subscriptionID string) error {
 	args := m.Called(ctx, subscriptionID)
 	return args.Error(0)

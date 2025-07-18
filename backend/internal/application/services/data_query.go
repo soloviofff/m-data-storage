@@ -13,12 +13,14 @@ import (
 // DataQueryService implements the DataQuery interface
 type DataQueryService struct {
 	storageManager interfaces.StorageManager
+	dateFilter     interfaces.DateFilter
 	logger         *logrus.Logger
 }
 
 // NewDataQueryService creates a new data query service
 func NewDataQueryService(
 	storageManager interfaces.StorageManager,
+	dateFilter interfaces.DateFilter,
 	logger *logrus.Logger,
 ) *DataQueryService {
 	if logger == nil {
@@ -27,43 +29,56 @@ func NewDataQueryService(
 
 	return &DataQueryService{
 		storageManager: storageManager,
+		dateFilter:     dateFilter,
 		logger:         logger,
 	}
 }
 
-// GetTickers retrieves tickers based on filter
+// GetTickers retrieves tickers based on filter with subscription date filtering
 func (dqs *DataQueryService) GetTickers(ctx context.Context, filter interfaces.TickerFilter) ([]entities.Ticker, error) {
 	if dqs.storageManager == nil {
 		dqs.logger.Warn("StorageManager not available, returning empty ticker list")
 		return []entities.Ticker{}, nil
 	}
 
-	// For now, delegate to storage manager
-	// In the future, this could include caching, aggregation, etc.
+	// Use date filter service if available for subscription-based filtering
+	if dqs.dateFilter != nil {
+		return dqs.dateFilter.FilterTickersBySubscriptionDate(ctx, filter)
+	}
+
+	// Fallback to direct storage manager call
 	return dqs.storageManager.GetTickers(ctx, filter)
 }
 
-// GetCandles retrieves candles based on filter
+// GetCandles retrieves candles based on filter with subscription date filtering
 func (dqs *DataQueryService) GetCandles(ctx context.Context, filter interfaces.CandleFilter) ([]entities.Candle, error) {
 	if dqs.storageManager == nil {
 		dqs.logger.Warn("StorageManager not available, returning empty candle list")
 		return []entities.Candle{}, nil
 	}
 
-	// For now, delegate to storage manager
-	// In the future, this could include caching, aggregation, etc.
+	// Use date filter service if available for subscription-based filtering
+	if dqs.dateFilter != nil {
+		return dqs.dateFilter.FilterCandlesBySubscriptionDate(ctx, filter)
+	}
+
+	// Fallback to direct storage manager call
 	return dqs.storageManager.GetCandles(ctx, filter)
 }
 
-// GetOrderBooks retrieves order books based on filter
+// GetOrderBooks retrieves order books based on filter with subscription date filtering
 func (dqs *DataQueryService) GetOrderBooks(ctx context.Context, filter interfaces.OrderBookFilter) ([]entities.OrderBook, error) {
 	if dqs.storageManager == nil {
 		dqs.logger.Warn("StorageManager not available, returning empty order book list")
 		return []entities.OrderBook{}, nil
 	}
 
-	// For now, delegate to storage manager
-	// In the future, this could include caching, aggregation, etc.
+	// Use date filter service if available for subscription-based filtering
+	if dqs.dateFilter != nil {
+		return dqs.dateFilter.FilterOrderBooksBySubscriptionDate(ctx, filter)
+	}
+
+	// Fallback to direct storage manager call
 	return dqs.storageManager.GetOrderBooks(ctx, filter)
 }
 

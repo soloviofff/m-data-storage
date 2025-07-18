@@ -121,6 +121,7 @@ func (c *Container) InitializeServices() error {
 	// In the future this will be replaced with full implementation with StorageManager
 	dataQuery := services.NewDataQueryService(
 		nil,             // storageManager - currently nil, will be added later
+		nil,             // dateFilter - currently nil, will be added later
 		c.logger.Logger, // Use the underlying logrus.Logger
 	)
 	c.Register("data.query", dataQuery)

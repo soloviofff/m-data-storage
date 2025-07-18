@@ -45,6 +45,15 @@ type OrderBookFilter struct {
 	Offset    int                       `json:"offset,omitempty"`
 }
 
+// SubscriptionFilter - filter for subscription retrieval
+type SubscriptionFilter struct {
+	Symbols   []string `json:"symbols,omitempty"`
+	BrokerIDs []string `json:"broker_ids,omitempty"`
+	Active    *bool    `json:"active,omitempty"`
+	Limit     int      `json:"limit,omitempty"`
+	Offset    int      `json:"offset,omitempty"`
+}
+
 // Storage - main interface for data storage
 type Storage interface {
 	// Data saving
@@ -77,6 +86,7 @@ type MetadataStorage interface {
 	// Subscription management
 	SaveSubscription(ctx context.Context, subscription entities.InstrumentSubscription) error
 	GetSubscription(ctx context.Context, id string) (*entities.InstrumentSubscription, error)
+	GetSubscriptions(ctx context.Context, filter SubscriptionFilter) ([]entities.InstrumentSubscription, error)
 	ListSubscriptions(ctx context.Context) ([]entities.InstrumentSubscription, error)
 	UpdateSubscription(ctx context.Context, subscription entities.InstrumentSubscription) error
 	DeleteSubscription(ctx context.Context, id string) error
@@ -177,4 +187,11 @@ type CandleAggregate struct {
 	Close     float64   `json:"close"`
 	Volume    float64   `json:"volume"`
 	Count     int64     `json:"count"`
+}
+
+// DateFilter - interface for date-based filtering operations
+type DateFilter interface {
+	FilterTickersBySubscriptionDate(ctx context.Context, filter TickerFilter) ([]entities.Ticker, error)
+	FilterCandlesBySubscriptionDate(ctx context.Context, filter CandleFilter) ([]entities.Candle, error)
+	FilterOrderBooksBySubscriptionDate(ctx context.Context, filter OrderBookFilter) ([]entities.OrderBook, error)
 }
