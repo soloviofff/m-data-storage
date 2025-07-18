@@ -92,6 +92,14 @@ func (c *Container) InitializeServices() error {
 	)
 	c.Register("instrument.manager", instrumentManager)
 
+	// Create stub DataQuery service for API endpoints
+	// In the future this will be replaced with full implementation with StorageManager
+	dataQuery := services.NewDataQueryService(
+		nil,             // storageManager - currently nil, will be added later
+		c.logger.Logger, // Use the underlying logrus.Logger
+	)
+	c.Register("data.query", dataQuery)
+
 	c.logger.Info("All services initialized successfully")
 	return nil
 }
@@ -139,6 +147,21 @@ func (c *Container) GetInstrumentManager() (interfaces.InstrumentManager, error)
 	}
 
 	return instrumentManager, nil
+}
+
+// GetDataQuery returns the data query service
+func (c *Container) GetDataQuery() (interfaces.DataQuery, error) {
+	svc, err := c.Get("data.query")
+	if err != nil {
+		return nil, err
+	}
+
+	dataQuery, ok := svc.(interfaces.DataQuery)
+	if !ok {
+		return nil, fmt.Errorf("service is not a DataQuery")
+	}
+
+	return dataQuery, nil
 }
 
 // Shutdown properly shuts down all services

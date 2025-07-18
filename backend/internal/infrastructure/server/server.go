@@ -24,6 +24,7 @@ type Server struct {
 	config              *config.Config
 	instrumentHandler   *handlers.InstrumentHandler
 	subscriptionHandler *handlers.SubscriptionHandler
+	dataHandler         *handlers.DataHandler
 }
 
 // NewServer creates a new HTTP server
@@ -58,6 +59,15 @@ func (s *Server) SetupHandlers() error {
 		s.instrumentHandler = handlers.NewInstrumentHandler(instrumentManager, s.logger)
 		s.subscriptionHandler = handlers.NewSubscriptionHandler(instrumentManager, s.logger)
 		s.logger.Info("Instrument and subscription handlers initialized")
+	}
+
+	// Get DataQuery service from container
+	dataQuery, err := s.container.GetDataQuery()
+	if err != nil {
+		s.logger.WithError(err).Warn("DataQuery service not available, data endpoints will be disabled")
+	} else {
+		s.dataHandler = handlers.NewDataHandler(dataQuery, s.logger)
+		s.logger.Info("Data handler initialized")
 	}
 
 	return nil
@@ -144,10 +154,16 @@ func (s *Server) SetupRoutes() {
 		apiV1.HandleFunc("/subscriptions/{id}", s.notImplementedHandler).Methods("DELETE")
 	}
 
-	// Data endpoints (stubs for future implementation)
-	apiV1.HandleFunc("/data/tickers", s.notImplementedHandler).Methods("GET")
-	apiV1.HandleFunc("/data/candles", s.notImplementedHandler).Methods("GET")
-	apiV1.HandleFunc("/data/orderbooks", s.notImplementedHandler).Methods("GET")
+	// Data endpoints
+	if s.dataHandler != nil {
+		apiV1.HandleFunc("/data/tickers", s.dataHandler.GetTickers).Methods("GET")
+		apiV1.HandleFunc("/data/candles", s.dataHandler.GetCandles).Methods("GET")
+		apiV1.HandleFunc("/data/orderbooks", s.dataHandler.GetOrderBooks).Methods("GET")
+	} else {
+		apiV1.HandleFunc("/data/tickers", s.notImplementedHandler).Methods("GET")
+		apiV1.HandleFunc("/data/candles", s.notImplementedHandler).Methods("GET")
+		apiV1.HandleFunc("/data/orderbooks", s.notImplementedHandler).Methods("GET")
+	}
 
 	// Configuration endpoints
 	apiV1.HandleFunc("/config", s.notImplementedHandler).Methods("GET", "PUT")

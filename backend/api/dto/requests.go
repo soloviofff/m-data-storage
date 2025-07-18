@@ -75,6 +75,29 @@ type MarketDataRequest struct {
 	Limit    int        `json:"limit,omitempty" validate:"omitempty,min=1,max=1000"`
 }
 
+// TickerDataRequest represents request to get ticker data
+type TickerDataRequest struct {
+	Symbol string     `json:"symbol" validate:"required"`
+	From   *time.Time `json:"from,omitempty"`
+	To     *time.Time `json:"to,omitempty"`
+	Limit  int        `json:"limit,omitempty" validate:"omitempty,min=1,max=1000"`
+}
+
+// CandleDataRequest represents request to get candle data
+type CandleDataRequest struct {
+	Symbol    string     `json:"symbol" validate:"required"`
+	Timeframe string     `json:"timeframe" validate:"required"`
+	From      *time.Time `json:"from,omitempty"`
+	To        *time.Time `json:"to,omitempty"`
+	Limit     int        `json:"limit,omitempty" validate:"omitempty,min=1,max=1000"`
+}
+
+// OrderBookDataRequest represents request to get order book data
+type OrderBookDataRequest struct {
+	Symbol string `json:"symbol" validate:"required"`
+	Depth  int    `json:"depth,omitempty" validate:"omitempty,min=1,max=100"`
+}
+
 // UpdateConfigRequest represents request to update system configuration
 type UpdateConfigRequest struct {
 	Config SystemConfig `json:"config" validate:"required"`
