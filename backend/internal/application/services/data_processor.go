@@ -27,6 +27,17 @@ type DataProcessorService struct {
 	batchSize     int
 	flushInterval time.Duration
 
+	// Advanced buffering settings
+	adaptiveBatching  bool
+	priorityBuffering bool
+	maxBatchSize      int
+	minBatchSize      int
+	adaptiveThreshold float64 // Channel utilization threshold for adaptive batching
+
+	// Buffer monitoring
+	bufferStats BufferStats
+	bufferMutex sync.RWMutex
+
 	// Lifecycle management
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -46,6 +57,16 @@ type ProcessorStats struct {
 	LastProcessed       time.Time `json:"last_processed"`
 }
 
+// BufferStats - buffer monitoring statistics
+type BufferStats struct {
+	TickerChannelUtilization    float64   `json:"ticker_channel_utilization"`
+	CandleChannelUtilization    float64   `json:"candle_channel_utilization"`
+	OrderBookChannelUtilization float64   `json:"orderbook_channel_utilization"`
+	AdaptiveBatchSizes          []int     `json:"adaptive_batch_sizes"`
+	OverflowEvents              int64     `json:"overflow_events"`
+	LastBufferCheck             time.Time `json:"last_buffer_check"`
+}
+
 // NewDataProcessorService creates a new data processing service
 func NewDataProcessorService(
 	storage interfaces.StorageManager,
@@ -61,6 +82,18 @@ func NewDataProcessorService(
 		tickerChan:    make(chan entities.Ticker, 1000),
 		candleChan:    make(chan entities.Candle, 1000),
 		orderBookChan: make(chan entities.OrderBook, 1000),
+
+		// Advanced buffering settings
+		adaptiveBatching:  true,
+		priorityBuffering: true,
+		maxBatchSize:      500,
+		minBatchSize:      10,
+		adaptiveThreshold: 0.7, // 70% channel utilization threshold
+
+		// Initialize buffer stats
+		bufferStats: BufferStats{
+			AdaptiveBatchSizes: make([]int, 0, 100), // Keep last 100 batch sizes
+		},
 	}
 }
 
@@ -237,9 +270,13 @@ func (s *DataProcessorService) GetStats() ProcessorStats {
 func (s *DataProcessorService) tickerWorker() {
 	defer s.wg.Done()
 
-	batch := make([]entities.Ticker, 0, s.batchSize)
+	batch := make([]entities.Ticker, 0, s.maxBatchSize)
 	ticker := time.NewTicker(s.flushInterval)
 	defer ticker.Stop()
+
+	// Buffer monitoring ticker
+	bufferTicker := time.NewTicker(1 * time.Second)
+	defer bufferTicker.Stop()
 
 	for {
 		select {
@@ -253,7 +290,11 @@ func (s *DataProcessorService) tickerWorker() {
 			}
 
 			batch = append(batch, data)
-			if len(batch) >= s.batchSize {
+
+			// Calculate adaptive batch size
+			adaptiveSize := s.calculateAdaptiveBatchSize(len(s.tickerChan), cap(s.tickerChan))
+
+			if len(batch) >= adaptiveSize {
 				s.processBatch(batch, "ticker")
 				batch = batch[:0]
 			}
@@ -263,6 +304,10 @@ func (s *DataProcessorService) tickerWorker() {
 				s.processBatch(batch, "ticker")
 				batch = batch[:0]
 			}
+
+		case <-bufferTicker.C:
+			// Update buffer statistics
+			s.updateBufferStats()
 
 		case <-s.ctx.Done():
 			return
@@ -274,7 +319,7 @@ func (s *DataProcessorService) tickerWorker() {
 func (s *DataProcessorService) candleWorker() {
 	defer s.wg.Done()
 
-	batch := make([]entities.Candle, 0, s.batchSize)
+	batch := make([]entities.Candle, 0, s.maxBatchSize)
 	ticker := time.NewTicker(s.flushInterval)
 	defer ticker.Stop()
 
@@ -289,7 +334,11 @@ func (s *DataProcessorService) candleWorker() {
 			}
 
 			batch = append(batch, data)
-			if len(batch) >= s.batchSize {
+
+			// Calculate adaptive batch size
+			adaptiveSize := s.calculateAdaptiveBatchSize(len(s.candleChan), cap(s.candleChan))
+
+			if len(batch) >= adaptiveSize {
 				s.processCandleBatch(batch)
 				batch = batch[:0]
 			}
@@ -310,7 +359,7 @@ func (s *DataProcessorService) candleWorker() {
 func (s *DataProcessorService) orderBookWorker() {
 	defer s.wg.Done()
 
-	batch := make([]entities.OrderBook, 0, s.batchSize)
+	batch := make([]entities.OrderBook, 0, s.maxBatchSize)
 	ticker := time.NewTicker(s.flushInterval)
 	defer ticker.Stop()
 
@@ -325,7 +374,11 @@ func (s *DataProcessorService) orderBookWorker() {
 			}
 
 			batch = append(batch, data)
-			if len(batch) >= s.batchSize {
+
+			// Calculate adaptive batch size
+			adaptiveSize := s.calculateAdaptiveBatchSize(len(s.orderBookChan), cap(s.orderBookChan))
+
+			if len(batch) >= adaptiveSize {
 				s.processOrderBookBatch(batch)
 				batch = batch[:0]
 			}
@@ -348,7 +401,7 @@ func (s *DataProcessorService) processBatch(batch []entities.Ticker, dataType st
 	defer cancel()
 
 	if err := s.storage.SaveTickers(ctx, batch); err != nil {
-		s.logger.WithError(err).Error("Failed to save ticker batch")
+		s.logger.WithError(err).WithField("data_type", dataType).Error("Failed to save ticker batch")
 		s.incrementErrors()
 		return
 	}
@@ -400,4 +453,102 @@ func (s *DataProcessorService) incrementErrors() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.stats.Errors++
+}
+
+// calculateAdaptiveBatchSize calculates optimal batch size based on channel utilization
+func (s *DataProcessorService) calculateAdaptiveBatchSize(channelLen, channelCap int) int {
+	if !s.adaptiveBatching {
+		return s.batchSize
+	}
+
+	utilization := float64(channelLen) / float64(channelCap)
+
+	var adaptiveSize int
+	if utilization > s.adaptiveThreshold {
+		// High utilization - increase batch size for better throughput
+		adaptiveSize = int(float64(s.batchSize) * (1.0 + utilization))
+		if adaptiveSize > s.maxBatchSize {
+			adaptiveSize = s.maxBatchSize
+		}
+	} else {
+		// Low utilization - decrease batch size for better latency
+		adaptiveSize = int(float64(s.batchSize) * utilization)
+		if adaptiveSize < s.minBatchSize {
+			adaptiveSize = s.minBatchSize
+		}
+	}
+
+	// Track adaptive batch sizes
+	s.bufferMutex.Lock()
+	s.bufferStats.AdaptiveBatchSizes = append(s.bufferStats.AdaptiveBatchSizes, adaptiveSize)
+	if len(s.bufferStats.AdaptiveBatchSizes) > 100 {
+		s.bufferStats.AdaptiveBatchSizes = s.bufferStats.AdaptiveBatchSizes[1:]
+	}
+	s.bufferMutex.Unlock()
+
+	return adaptiveSize
+}
+
+// updateBufferStats updates buffer monitoring statistics
+func (s *DataProcessorService) updateBufferStats() {
+	s.bufferMutex.Lock()
+	defer s.bufferMutex.Unlock()
+
+	tickerCap := cap(s.tickerChan)
+	candleCap := cap(s.candleChan)
+	orderBookCap := cap(s.orderBookChan)
+
+	s.bufferStats.TickerChannelUtilization = float64(len(s.tickerChan)) / float64(tickerCap)
+	s.bufferStats.CandleChannelUtilization = float64(len(s.candleChan)) / float64(candleCap)
+	s.bufferStats.OrderBookChannelUtilization = float64(len(s.orderBookChan)) / float64(orderBookCap)
+	s.bufferStats.LastBufferCheck = time.Now()
+
+	// Check for overflow conditions
+	if s.bufferStats.TickerChannelUtilization > 0.95 ||
+		s.bufferStats.CandleChannelUtilization > 0.95 ||
+		s.bufferStats.OrderBookChannelUtilization > 0.95 {
+		s.bufferStats.OverflowEvents++
+		s.logger.Warn("Buffer overflow risk detected",
+			"ticker_util", s.bufferStats.TickerChannelUtilization,
+			"candle_util", s.bufferStats.CandleChannelUtilization,
+			"orderbook_util", s.bufferStats.OrderBookChannelUtilization)
+	}
+}
+
+// GetBufferStats returns current buffer statistics
+func (s *DataProcessorService) GetBufferStats() BufferStats {
+	s.bufferMutex.RLock()
+	stats := s.bufferStats
+	s.bufferMutex.RUnlock()
+
+	return stats
+}
+
+// SetAdaptiveBatching enables or disables adaptive batching
+func (s *DataProcessorService) SetAdaptiveBatching(enabled bool) {
+	s.adaptiveBatching = enabled
+	s.logger.Info("Adaptive batching setting changed", "enabled", enabled)
+}
+
+// SetPriorityBuffering enables or disables priority buffering
+func (s *DataProcessorService) SetPriorityBuffering(enabled bool) {
+	s.priorityBuffering = enabled
+	s.logger.Info("Priority buffering setting changed", "enabled", enabled)
+}
+
+// SetBatchSizeLimits sets the minimum and maximum batch sizes for adaptive batching
+func (s *DataProcessorService) SetBatchSizeLimits(min, max int) {
+	if min > 0 && max > min {
+		s.minBatchSize = min
+		s.maxBatchSize = max
+		s.logger.Info("Batch size limits updated", "min", min, "max", max)
+	}
+}
+
+// SetAdaptiveThreshold sets the channel utilization threshold for adaptive batching
+func (s *DataProcessorService) SetAdaptiveThreshold(threshold float64) {
+	if threshold > 0 && threshold < 1 {
+		s.adaptiveThreshold = threshold
+		s.logger.Info("Adaptive threshold updated", "threshold", threshold)
+	}
 }

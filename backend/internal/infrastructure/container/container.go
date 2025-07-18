@@ -82,15 +82,40 @@ func (c *Container) InitializeServices() error {
 	// TODO: Initialize StorageManager and StorageService
 	// Leaving as TODO for now, as database connection configuration is needed
 
-	// Create stub InstrumentManager for API endpoints
-	// In the future this will be replaced with full implementation with StorageManager and DataPipeline
+	// Create DataProcessor service
+	dataProcessor := services.NewDataProcessorService(
+		nil, // storageManager - currently nil, will be added later
+		dataValidator,
+		c.logger.Logger,
+	)
+	c.Register("data.processor", dataProcessor)
+
+	// Create DataPipeline service
+	dataPipeline := services.NewDataPipelineService(
+		nil, // brokerManager - currently nil, will be added later
+		nil, // storageIntegration - currently nil, will be added later
+		c.logger.Logger,
+		services.DefaultDataPipelineConfig(),
+	)
+	c.Register("data.pipeline", dataPipeline)
+
+	// Create InstrumentManager for API endpoints
 	instrumentManager := services.NewInstrumentManagerService(
 		nil, // metadataStorage - currently nil, will be added later
-		nil, // dataPipeline - currently nil, will be added later
+		dataPipeline,
 		dataValidator,
 		c.logger.Logger, // Use the underlying logrus.Logger
 	)
 	c.Register("instrument.manager", instrumentManager)
+
+	// Create DataCollector service
+	dataCollector := services.NewDataCollectorService(
+		dataPipeline,
+		instrumentManager,
+		dataProcessor,
+		c.logger.Logger,
+	)
+	c.Register("data.collector", dataCollector)
 
 	// Create stub DataQuery service for API endpoints
 	// In the future this will be replaced with full implementation with StorageManager
@@ -162,6 +187,51 @@ func (c *Container) GetDataQuery() (interfaces.DataQuery, error) {
 	}
 
 	return dataQuery, nil
+}
+
+// GetDataProcessor returns the data processor service
+func (c *Container) GetDataProcessor() (interfaces.DataProcessor, error) {
+	svc, err := c.Get("data.processor")
+	if err != nil {
+		return nil, err
+	}
+
+	dataProcessor, ok := svc.(interfaces.DataProcessor)
+	if !ok {
+		return nil, fmt.Errorf("service is not a DataProcessor")
+	}
+
+	return dataProcessor, nil
+}
+
+// GetDataPipeline returns the data pipeline service
+func (c *Container) GetDataPipeline() (interfaces.DataPipeline, error) {
+	svc, err := c.Get("data.pipeline")
+	if err != nil {
+		return nil, err
+	}
+
+	dataPipeline, ok := svc.(interfaces.DataPipeline)
+	if !ok {
+		return nil, fmt.Errorf("service is not a DataPipeline")
+	}
+
+	return dataPipeline, nil
+}
+
+// GetDataCollector returns the data collector service
+func (c *Container) GetDataCollector() (interfaces.DataCollector, error) {
+	svc, err := c.Get("data.collector")
+	if err != nil {
+		return nil, err
+	}
+
+	dataCollector, ok := svc.(interfaces.DataCollector)
+	if !ok {
+		return nil, fmt.Errorf("service is not a DataCollector")
+	}
+
+	return dataCollector, nil
 }
 
 // Shutdown properly shuts down all services

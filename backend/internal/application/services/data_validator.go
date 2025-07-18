@@ -2,6 +2,7 @@ package services
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -22,6 +23,17 @@ type DataValidatorService struct {
 	maxPrice          float64
 	minVolume         float64
 	maxVolume         float64
+
+	// Advanced validation settings
+	enableDuplicateDetection bool
+	enableAnomalyDetection   bool
+	maxPriceDeviation        float64 // Maximum allowed price deviation (percentage)
+	maxVolumeSpike           float64 // Maximum allowed volume spike (multiplier)
+
+	// Data consistency tracking
+	lastTickerPrices map[string]float64         // symbol -> last price
+	lastCandleData   map[string]entities.Candle // symbol -> last candle
+	mutex            sync.RWMutex
 }
 
 // NewDataValidatorService creates a new data validation service
@@ -37,6 +49,16 @@ func NewDataValidatorService() *DataValidatorService {
 		maxPrice:          1000000000,           // Maximum price
 		minVolume:         0,                    // Minimum volume
 		maxVolume:         1000000000000,        // Maximum volume
+
+		// Advanced validation settings
+		enableDuplicateDetection: true,
+		enableAnomalyDetection:   true,
+		maxPriceDeviation:        50.0, // 50% maximum price deviation
+		maxVolumeSpike:           10.0, // 10x maximum volume spike
+
+		// Initialize tracking maps
+		lastTickerPrices: make(map[string]float64),
+		lastCandleData:   make(map[string]entities.Candle),
 	}
 }
 
@@ -105,6 +127,11 @@ func (v *DataValidatorService) ValidateTicker(ticker entities.Ticker) error {
 
 	if ticker.OpenInterest < 0 {
 		return errors.New("open interest cannot be negative")
+	}
+
+	// Advanced validation
+	if err := v.validateTickerAdvanced(ticker); err != nil {
+		return errors.Wrap(err, "advanced validation failed")
 	}
 
 	return nil
@@ -185,6 +212,11 @@ func (v *DataValidatorService) ValidateCandle(candle entities.Candle) error {
 
 	if candle.OpenInterest < 0 {
 		return errors.New("open interest cannot be negative")
+	}
+
+	// Advanced validation
+	if err := v.validateCandleAdvanced(candle); err != nil {
+		return errors.Wrap(err, "advanced validation failed")
 	}
 
 	return nil
@@ -489,4 +521,144 @@ func (v *DataValidatorService) ValidateInstrumentType(instrumentType string) err
 // ValidateTimeframe validates timeframe string (public interface method)
 func (v *DataValidatorService) ValidateTimeframe(timeframe string) error {
 	return v.validateTimeframe(timeframe)
+}
+
+// validateTickerAdvanced performs advanced validation for tickers
+func (v *DataValidatorService) validateTickerAdvanced(ticker entities.Ticker) error {
+	if !v.enableAnomalyDetection && !v.enableDuplicateDetection {
+		return nil
+	}
+
+	key := ticker.Symbol + ":" + ticker.BrokerID
+
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+
+	// Check for duplicates
+	if v.enableDuplicateDetection {
+		if lastPrice, exists := v.lastTickerPrices[key]; exists {
+			// Check if this is a duplicate (same price and volume)
+			if ticker.Price == lastPrice && ticker.Volume == ticker.Volume {
+				return errors.New("duplicate ticker detected")
+			}
+		}
+	}
+
+	// Check for price anomalies
+	if v.enableAnomalyDetection {
+		if lastPrice, exists := v.lastTickerPrices[key]; exists {
+			deviation := ((ticker.Price - lastPrice) / lastPrice) * 100
+			if deviation < 0 {
+				deviation = -deviation
+			}
+
+			if deviation > v.maxPriceDeviation {
+				return errors.Errorf("price deviation too high: %.2f%% (max: %.2f%%)",
+					deviation, v.maxPriceDeviation)
+			}
+		}
+	}
+
+	// Update tracking data
+	v.lastTickerPrices[key] = ticker.Price
+
+	return nil
+}
+
+// validateCandleAdvanced performs advanced validation for candles
+func (v *DataValidatorService) validateCandleAdvanced(candle entities.Candle) error {
+	if !v.enableAnomalyDetection && !v.enableDuplicateDetection {
+		return nil
+	}
+
+	key := candle.Symbol + ":" + candle.BrokerID + ":" + candle.Timeframe
+
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+
+	// Check for data consistency
+	if v.enableAnomalyDetection {
+		if lastCandle, exists := v.lastCandleData[key]; exists {
+			// Check timestamp sequence
+			if candle.Timestamp.Before(lastCandle.Timestamp) {
+				return errors.New("candle timestamp is before previous candle")
+			}
+
+			// Check price continuity (close of previous should be near open of current)
+			priceDiff := ((candle.Open - lastCandle.Close) / lastCandle.Close) * 100
+			if priceDiff < 0 {
+				priceDiff = -priceDiff
+			}
+
+			if priceDiff > v.maxPriceDeviation {
+				return errors.Errorf("price gap too large between candles: %.2f%% (max: %.2f%%)",
+					priceDiff, v.maxPriceDeviation)
+			}
+
+			// Check volume spikes
+			if lastCandle.Volume > 0 {
+				volumeRatio := candle.Volume / lastCandle.Volume
+				if volumeRatio > v.maxVolumeSpike {
+					return errors.Errorf("volume spike too high: %.2fx (max: %.2fx)",
+						volumeRatio, v.maxVolumeSpike)
+				}
+			}
+		}
+	}
+
+	// Update tracking data
+	v.lastCandleData[key] = candle
+
+	return nil
+}
+
+// SetAnomalyDetection enables or disables anomaly detection
+func (v *DataValidatorService) SetAnomalyDetection(enabled bool) {
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+	v.enableAnomalyDetection = enabled
+}
+
+// SetDuplicateDetection enables or disables duplicate detection
+func (v *DataValidatorService) SetDuplicateDetection(enabled bool) {
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+	v.enableDuplicateDetection = enabled
+}
+
+// SetMaxPriceDeviation sets the maximum allowed price deviation percentage
+func (v *DataValidatorService) SetMaxPriceDeviation(deviation float64) {
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+	v.maxPriceDeviation = deviation
+}
+
+// SetMaxVolumeSpike sets the maximum allowed volume spike multiplier
+func (v *DataValidatorService) SetMaxVolumeSpike(spike float64) {
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+	v.maxVolumeSpike = spike
+}
+
+// ClearTrackingData clears all tracking data (useful for testing or reset)
+func (v *DataValidatorService) ClearTrackingData() {
+	v.mutex.Lock()
+	defer v.mutex.Unlock()
+	v.lastTickerPrices = make(map[string]float64)
+	v.lastCandleData = make(map[string]entities.Candle)
+}
+
+// GetValidationStats returns validation statistics
+func (v *DataValidatorService) GetValidationStats() map[string]interface{} {
+	v.mutex.RLock()
+	defer v.mutex.RUnlock()
+
+	return map[string]interface{}{
+		"anomaly_detection_enabled":   v.enableAnomalyDetection,
+		"duplicate_detection_enabled": v.enableDuplicateDetection,
+		"max_price_deviation":         v.maxPriceDeviation,
+		"max_volume_spike":            v.maxVolumeSpike,
+		"tracked_tickers":             len(v.lastTickerPrices),
+		"tracked_candles":             len(v.lastCandleData),
+	}
 }
