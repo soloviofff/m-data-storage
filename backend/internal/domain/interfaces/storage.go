@@ -195,3 +195,65 @@ type DateFilter interface {
 	FilterCandlesBySubscriptionDate(ctx context.Context, filter CandleFilter) ([]entities.Candle, error)
 	FilterOrderBooksBySubscriptionDate(ctx context.Context, filter OrderBookFilter) ([]entities.OrderBook, error)
 }
+
+// UserStorage defines the interface for user storage operations
+type UserStorage interface {
+	// User operations
+	CreateUser(ctx context.Context, user *entities.User) error
+	GetUserByID(ctx context.Context, id string) (*entities.User, error)
+	GetUserByUsername(ctx context.Context, username string) (*entities.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*entities.User, error)
+	GetUsers(ctx context.Context, filter entities.UserFilter) ([]*entities.User, error)
+	UpdateUser(ctx context.Context, user *entities.User) error
+	DeleteUser(ctx context.Context, id string) error
+	UpdateLastLogin(ctx context.Context, userID string) error
+
+	// Session operations
+	CreateSession(ctx context.Context, session *entities.UserSession) error
+	GetSessionByID(ctx context.Context, id string) (*entities.UserSession, error)
+	GetSessionsByUserID(ctx context.Context, userID string) ([]*entities.UserSession, error)
+	UpdateSession(ctx context.Context, session *entities.UserSession) error
+	RevokeSession(ctx context.Context, id string) error
+	RevokeUserSessions(ctx context.Context, userID string) error
+	CleanupExpiredSessions(ctx context.Context) error
+
+	// API Key operations
+	CreateAPIKey(ctx context.Context, apiKey *entities.APIKey) error
+	GetAPIKeyByID(ctx context.Context, id string) (*entities.APIKey, error)
+	GetAPIKeysByUserID(ctx context.Context, userID string) ([]*entities.APIKey, error)
+	GetAPIKeys(ctx context.Context, filter entities.APIKeyFilter) ([]*entities.APIKey, error)
+	UpdateAPIKey(ctx context.Context, apiKey *entities.APIKey) error
+	DeleteAPIKey(ctx context.Context, id string) error
+	UpdateAPIKeyLastUsed(ctx context.Context, id string) error
+
+	// Health check
+	Health(ctx context.Context) error
+}
+
+// RoleStorage defines the interface for role and permission storage operations
+type RoleStorage interface {
+	// Role operations
+	CreateRole(ctx context.Context, role *entities.Role) error
+	GetRoleByID(ctx context.Context, id string) (*entities.Role, error)
+	GetRoleByName(ctx context.Context, name string) (*entities.Role, error)
+	GetRoles(ctx context.Context, filter entities.RoleFilter) ([]*entities.Role, error)
+	UpdateRole(ctx context.Context, role *entities.Role) error
+	DeleteRole(ctx context.Context, id string) error
+
+	// Permission operations
+	CreatePermission(ctx context.Context, permission *entities.Permission) error
+	GetPermissionByID(ctx context.Context, id string) (*entities.Permission, error)
+	GetPermissionByName(ctx context.Context, name string) (*entities.Permission, error)
+	GetPermissions(ctx context.Context, filter entities.PermissionFilter) ([]*entities.Permission, error)
+	UpdatePermission(ctx context.Context, permission *entities.Permission) error
+	DeletePermission(ctx context.Context, id string) error
+
+	// Role-Permission operations
+	AssignPermissionToRole(ctx context.Context, roleID, permissionID string) error
+	RemovePermissionFromRole(ctx context.Context, roleID, permissionID string) error
+	GetRolePermissions(ctx context.Context, roleID string) ([]*entities.Permission, error)
+	GetPermissionRoles(ctx context.Context, permissionID string) ([]*entities.Role, error)
+
+	// Health check
+	Health(ctx context.Context) error
+}

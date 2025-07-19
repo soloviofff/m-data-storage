@@ -17,6 +17,8 @@ import (
 type Manager struct {
 	metadata   interfaces.MetadataStorage
 	timeSeries interfaces.TimeSeriesStorage
+	userRepo   interfaces.UserStorage
+	roleRepo   interfaces.RoleStorage
 	migrations *migrations.Manager
 	logger     *logrus.Logger
 }
@@ -65,9 +67,16 @@ func NewManager(config Config, logger *logrus.Logger) (*Manager, error) {
 	}
 	timeSeriesRepo := questdb.NewTimeSeriesRepository(questdbConfig)
 
+	// Create authentication repositories using the same SQLite database
+	db := metadataRepo.GetDB()
+	userRepo := sqlite.NewUserRepository(db)
+	roleRepo := sqlite.NewRoleRepository(db)
+
 	return &Manager{
 		metadata:   metadataRepo,
 		timeSeries: timeSeriesRepo,
+		userRepo:   userRepo,
+		roleRepo:   roleRepo,
 		migrations: nil, // Will be initialized during Initialize()
 		logger:     logger,
 	}, nil
@@ -279,6 +288,16 @@ func (m *Manager) RollbackMigrations(ctx context.Context, targetVersion int64) e
 
 	m.logger.WithField("target_version", targetVersion).Info("Migration rollback completed successfully")
 	return nil
+}
+
+// GetUserStorage returns the user storage repository
+func (m *Manager) GetUserStorage() interfaces.UserStorage {
+	return m.userRepo
+}
+
+// GetRoleStorage returns the role storage repository
+func (m *Manager) GetRoleStorage() interfaces.RoleStorage {
+	return m.roleRepo
 }
 
 // GetStats returns storage statistics
