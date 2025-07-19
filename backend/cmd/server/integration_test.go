@@ -111,3 +111,77 @@ func createTestConfig() *config.Config {
 		},
 	}
 }
+
+func TestInitializeContainer(t *testing.T) {
+	cfg := createTestConfig()
+	log, err := logger.New(cfg.Logging)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	container, err := initializeContainer(ctx, cfg, log)
+	require.NoError(t, err)
+	require.NotNil(t, container)
+
+	// Test that container has required services
+	assert.NotNil(t, container)
+
+	// Cleanup
+	err = container.Shutdown()
+	require.NoError(t, err)
+}
+
+func TestInitializeHTTPServer(t *testing.T) {
+	cfg := createTestConfig()
+	log, err := logger.New(cfg.Logging)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	container, err := initializeContainer(ctx, cfg, log)
+	require.NoError(t, err)
+	defer container.Shutdown()
+
+	httpServer, err := initializeHTTPServer(cfg, container, log)
+	require.NoError(t, err)
+	require.NotNil(t, httpServer)
+
+	// Test that server is properly configured
+	assert.NotNil(t, httpServer)
+}
+
+func TestRunServerWithCancellation(t *testing.T) {
+	cfg := createTestConfig()
+	// Use a different port to avoid conflicts
+	cfg.API.Port = 8081
+
+	log, err := logger.New(cfg.Logging)
+	require.NoError(t, err)
+
+	// Create context with immediate cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	// runServer should return without error when context is cancelled
+	err = runServer(ctx, cfg, log)
+	assert.NoError(t, err)
+}
+
+func TestCreateTestConfig(t *testing.T) {
+	cfg := createTestConfig()
+	require.NotNil(t, cfg)
+
+	// Test all required fields are set
+	assert.Equal(t, "m-data-storage-test", cfg.App.Name)
+	assert.Equal(t, "1.0.0", cfg.App.Version)
+	assert.Equal(t, "test", cfg.App.Environment)
+	assert.Equal(t, "localhost", cfg.API.Host)
+	assert.Equal(t, 8080, cfg.API.Port)
+	assert.Equal(t, 30*time.Second, cfg.API.ReadTimeout)
+	assert.Equal(t, 30*time.Second, cfg.API.WriteTimeout)
+	assert.Equal(t, 10*time.Second, cfg.API.ShutdownTimeout)
+	assert.Equal(t, "info", cfg.Logging.Level)
+	assert.Equal(t, "json", cfg.Logging.Format)
+	assert.Equal(t, ":memory:", cfg.Database.SQLite.Path)
+	assert.Equal(t, "localhost", cfg.Database.QuestDB.Host)
+	assert.Equal(t, 8812, cfg.Database.QuestDB.Port)
+	assert.Equal(t, "qdb", cfg.Database.QuestDB.Database)
+}

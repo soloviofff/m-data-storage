@@ -214,3 +214,203 @@ func TestContainer_Shutdown(t *testing.T) {
 		t.Error("Services should be cleared after shutdown")
 	}
 }
+
+func TestContainer_GetInstrumentManager(t *testing.T) {
+	cfg := &config.Config{
+		App: config.AppConfig{
+			Name:        "test-app",
+			Environment: "test",
+		},
+	}
+
+	log := createTestLogger()
+	container := NewContainer(cfg, log)
+
+	// Initialize services first
+	err := container.InitializeServices()
+	if err != nil {
+		t.Fatalf("Failed to initialize services: %v", err)
+	}
+
+	// Test getting instrument manager
+	instrumentManager, err := container.GetInstrumentManager()
+	if err != nil {
+		t.Errorf("Container.GetInstrumentManager() error = %v, want nil", err)
+	}
+
+	if instrumentManager == nil {
+		t.Error("Container.GetInstrumentManager() returned nil")
+	}
+}
+
+func TestContainer_GetDataQuery(t *testing.T) {
+	cfg := &config.Config{
+		App: config.AppConfig{
+			Name:        "test-app",
+			Environment: "test",
+		},
+	}
+
+	log := createTestLogger()
+	container := NewContainer(cfg, log)
+
+	// Initialize services first
+	err := container.InitializeServices()
+	if err != nil {
+		t.Fatalf("Failed to initialize services: %v", err)
+	}
+
+	// Test getting data query
+	dataQuery, err := container.GetDataQuery()
+	if err != nil {
+		t.Errorf("Container.GetDataQuery() error = %v, want nil", err)
+	}
+
+	if dataQuery == nil {
+		t.Error("Container.GetDataQuery() returned nil")
+	}
+}
+
+func TestContainer_GetDataProcessor(t *testing.T) {
+	cfg := &config.Config{
+		App: config.AppConfig{
+			Name:        "test-app",
+			Environment: "test",
+		},
+	}
+
+	log := createTestLogger()
+	container := NewContainer(cfg, log)
+
+	// Initialize services first
+	err := container.InitializeServices()
+	if err != nil {
+		t.Fatalf("Failed to initialize services: %v", err)
+	}
+
+	// Test getting data processor
+	dataProcessor, err := container.GetDataProcessor()
+	if err != nil {
+		t.Errorf("Container.GetDataProcessor() error = %v, want nil", err)
+	}
+
+	if dataProcessor == nil {
+		t.Error("Container.GetDataProcessor() returned nil")
+	}
+}
+
+func TestContainer_GetDataPipeline(t *testing.T) {
+	cfg := &config.Config{
+		App: config.AppConfig{
+			Name:        "test-app",
+			Environment: "test",
+		},
+	}
+
+	log := createTestLogger()
+	container := NewContainer(cfg, log)
+
+	// Initialize services first
+	err := container.InitializeServices()
+	if err != nil {
+		t.Fatalf("Failed to initialize services: %v", err)
+	}
+
+	// Test getting data pipeline
+	dataPipeline, err := container.GetDataPipeline()
+	if err != nil {
+		t.Errorf("Container.GetDataPipeline() error = %v, want nil", err)
+	}
+
+	if dataPipeline == nil {
+		t.Error("Container.GetDataPipeline() returned nil")
+	}
+}
+
+func TestContainer_GetDataCollector(t *testing.T) {
+	cfg := &config.Config{
+		App: config.AppConfig{
+			Name:        "test-app",
+			Environment: "test",
+		},
+	}
+
+	log := createTestLogger()
+	container := NewContainer(cfg, log)
+
+	// Initialize services first
+	err := container.InitializeServices()
+	if err != nil {
+		t.Fatalf("Failed to initialize services: %v", err)
+	}
+
+	// Test getting data collector
+	dataCollector, err := container.GetDataCollector()
+	if err != nil {
+		t.Errorf("Container.GetDataCollector() error = %v, want nil", err)
+	}
+
+	if dataCollector == nil {
+		t.Error("Container.GetDataCollector() returned nil")
+	}
+}
+
+func TestContainer_GetServiceTypeErrors(t *testing.T) {
+	container := NewContainer(&config.Config{}, createTestLogger())
+
+	// Register wrong type for config service
+	container.Register("config.service", "wrong-type")
+
+	_, err := container.GetConfigService()
+	if err == nil {
+		t.Error("GetConfigService() should return error for wrong type")
+	}
+
+	// Register wrong type for data validator
+	container.Register("data.validator", "wrong-type")
+
+	_, err = container.GetDataValidator()
+	if err == nil {
+		t.Error("GetDataValidator() should return error for wrong type")
+	}
+
+	// Register wrong type for instrument manager
+	container.Register("instrument.manager", "wrong-type")
+
+	_, err = container.GetInstrumentManager()
+	if err == nil {
+		t.Error("GetInstrumentManager() should return error for wrong type")
+	}
+
+	// Register wrong type for data query
+	container.Register("data.query", "wrong-type")
+
+	_, err = container.GetDataQuery()
+	if err == nil {
+		t.Error("GetDataQuery() should return error for wrong type")
+	}
+
+	// Register wrong type for data processor
+	container.Register("data.processor", "wrong-type")
+
+	_, err = container.GetDataProcessor()
+	if err == nil {
+		t.Error("GetDataProcessor() should return error for wrong type")
+	}
+
+	// Register wrong type for data pipeline
+	container.Register("data.pipeline", "wrong-type")
+
+	_, err = container.GetDataPipeline()
+	if err == nil {
+		t.Error("GetDataPipeline() should return error for wrong type")
+	}
+
+	// Register wrong type for data collector
+	container.Register("data.collector", "wrong-type")
+
+	_, err = container.GetDataCollector()
+	if err == nil {
+		t.Error("GetDataCollector() should return error for wrong type")
+	}
+}
