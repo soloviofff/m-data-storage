@@ -4,15 +4,16 @@
 -- Instruments table - stores information about trading instruments
 CREATE TABLE IF NOT EXISTS instruments (
     symbol TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
     type TEXT NOT NULL, -- 'spot', 'futures', 'stock', 'etf', 'bond'
-    market TEXT NOT NULL, -- 'crypto', 'stock', 'forex'
+    market TEXT NOT NULL, -- 'spot', 'futures', 'stock'
     base_asset TEXT,
     quote_asset TEXT,
-    min_price_increment REAL,
-    min_quantity_increment REAL,
-    min_notional REAL,
+    min_price REAL,
+    max_price REAL,
+    min_quantity REAL,
     max_quantity REAL,
+    price_precision INTEGER,
+    quantity_precision INTEGER,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -21,12 +22,14 @@ CREATE TABLE IF NOT EXISTS instruments (
 -- Subscriptions table - stores active data subscriptions
 CREATE TABLE IF NOT EXISTS subscriptions (
     id TEXT PRIMARY KEY,
-    broker_id TEXT NOT NULL,
     symbol TEXT NOT NULL,
+    type TEXT NOT NULL, -- 'spot', 'futures', 'stock', 'etf', 'bond'
+    market TEXT NOT NULL, -- 'spot', 'futures', 'stock'
     data_types TEXT NOT NULL, -- JSON array of data types
-    timeframes TEXT, -- JSON array of timeframes for candles
     start_date DATETIME NOT NULL,
     end_date DATETIME,
+    settings TEXT, -- JSON settings
+    broker_id TEXT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -126,7 +126,11 @@ Example endpoints:
 - `GET /api/v1/candles` - Get candle data
 - `GET /api/v1/instruments` - Get instrument information
 
+For complete API documentation, see [docs/API.md](docs/API.md).
+
 ## Development
+
+For detailed development information, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ### Project Structure
 
@@ -150,6 +154,8 @@ GOOS=linux GOARCH=amd64 go build -o bin/m-data-storage-linux ./cmd/server
 
 ### Testing
 
+The project includes comprehensive unit and integration tests:
+
 ```bash
 # Run all tests
 go test ./...
@@ -159,6 +165,9 @@ go test -cover ./...
 
 # Run tests with verbose output
 go test -v ./...
+
+# Run integration tests only
+go test -v -run "Integration" ./...
 
 # Run tests for specific package
 go test ./internal/domain/entities
@@ -170,6 +179,12 @@ go test -bench=. ./...
 go test -coverprofile=coverage.out ./...
 go tool cover -html=coverage.out -o coverage.html
 ```
+
+**Test Coverage:**
+- Unit tests for all core components
+- Integration tests for API endpoints
+- Integration tests for database operations
+- Integration tests for broker connections
 
 ### Code Quality
 
@@ -205,6 +220,8 @@ Key environment variables:
 
 - `configs/config.yaml`: Main application configuration
 - `configs/brokers/*.yaml`: Broker-specific configurations
+
+For detailed configuration options, see the example configuration files in the `configs/` directory.
 
 ## Monitoring
 
@@ -244,6 +261,17 @@ The service collects various metrics:
 ## License
 
 [License information to be added]
+
+## Deployment
+
+For production deployment instructions, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Documentation
+
+- [API Documentation](docs/API.md) - Complete REST API reference
+- [Development Guide](docs/DEVELOPMENT.md) - Developer setup and guidelines
+- [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment instructions
+- [Architecture Documentation](docs/) - Detailed architecture and design documents
 
 ## Support
 
