@@ -126,6 +126,12 @@ func (c *Container) InitializeServices() error {
 	)
 	c.Register("data.query", dataQuery)
 
+	// Create SecurityService for authentication middleware
+	securityService := services.NewSecurityService(
+		nil, // userRepository - currently nil, will be added later
+	)
+	c.Register("security.service", securityService)
+
 	c.logger.Info("All services initialized successfully")
 	return nil
 }
@@ -233,6 +239,21 @@ func (c *Container) GetDataCollector() (interfaces.DataCollector, error) {
 	}
 
 	return dataCollector, nil
+}
+
+// GetSecurityService returns the security service
+func (c *Container) GetSecurityService() (interfaces.SecurityService, error) {
+	svc, err := c.Get("security.service")
+	if err != nil {
+		return nil, err
+	}
+
+	securityService, ok := svc.(interfaces.SecurityService)
+	if !ok {
+		return nil, fmt.Errorf("service is not a SecurityService")
+	}
+
+	return securityService, nil
 }
 
 // Shutdown properly shuts down all services

@@ -83,6 +83,21 @@ func (s *Server) SetupMiddleware() {
 	recoveryMiddleware := middleware.NewRecoveryMiddleware(s.logger)
 	s.router.Use(recoveryMiddleware.Recover)
 
+	// Security headers middleware (optional)
+	securityService, err := s.container.GetSecurityService()
+	if err != nil {
+		s.logger.Error("Failed to get security service", "error", err.Error())
+		// Continue without security middleware for now
+	} else {
+		securityMiddleware := middleware.NewSecurityMiddleware(
+			securityService,
+			s.logger,
+		)
+		s.router.Use(securityMiddleware.SecurityHeaders)
+		// Security logging middleware
+		s.router.Use(securityMiddleware.SecurityLogging)
+	}
+
 	// Logging middleware
 	loggingMiddleware := middleware.NewLoggingMiddleware(s.logger)
 	s.router.Use(loggingMiddleware.Log)
