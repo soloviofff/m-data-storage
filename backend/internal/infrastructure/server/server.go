@@ -10,6 +10,7 @@ import (
 
 	"m-data-storage/api/handlers"
 	"m-data-storage/api/middleware"
+	"m-data-storage/api/routes"
 	"m-data-storage/internal/infrastructure/config"
 	"m-data-storage/internal/infrastructure/container"
 	"m-data-storage/internal/infrastructure/logger"
@@ -25,6 +26,8 @@ type Server struct {
 	instrumentHandler   *handlers.InstrumentHandler
 	subscriptionHandler *handlers.SubscriptionHandler
 	dataHandler         *handlers.DataHandler
+	authHandler         *handlers.AuthHandler
+	authMiddleware      *middleware.AuthMiddleware
 }
 
 // NewServer creates a new HTTP server
@@ -51,6 +54,11 @@ func NewServer(cfg *config.Config, container *container.Container, logger *logge
 
 // SetupHandlers initializes HTTP handlers
 func (s *Server) SetupHandlers() error {
+	// Initialize authentication handlers
+	if err := s.setupAuthHandlers(); err != nil {
+		return fmt.Errorf("failed to setup authentication handlers: %w", err)
+	}
+
 	// Get InstrumentManager from container
 	instrumentManager, err := s.container.GetInstrumentManager()
 	if err != nil {
@@ -70,6 +78,77 @@ func (s *Server) SetupHandlers() error {
 		s.logger.Info("Data handler initialized")
 	}
 
+	return nil
+}
+
+// setupAuthHandlers initializes authentication handlers and middleware
+func (s *Server) setupAuthHandlers() error {
+	// Get authentication services from container
+	authService, err := s.container.GetAuthService()
+	if err != nil {
+		s.logger.WithError(err).Warn("AuthService not available, authentication endpoints will be disabled")
+		return nil // Continue without authentication for now
+	}
+
+	tokenService, err := s.container.GetTokenService()
+	if err != nil {
+		s.logger.WithError(err).Warn("TokenService not available, authentication endpoints will be disabled")
+		return nil // Continue without authentication for now
+	}
+
+	apiKeyService, err := s.container.GetAPIKeyService()
+	if err != nil {
+		s.logger.WithError(err).Warn("APIKeyService not available, authentication endpoints will be disabled")
+		return nil // Continue without authentication for now
+	}
+
+	authorizationService, err := s.container.GetAuthorizationService()
+	if err != nil {
+		s.logger.WithError(err).Warn("AuthorizationService not available, authentication endpoints will be disabled")
+		return nil // Continue without authentication for now
+	}
+
+	securityService, err := s.container.GetSecurityService()
+	if err != nil {
+		s.logger.WithError(err).Warn("SecurityService not available, authentication endpoints will be disabled")
+		return nil // Continue without authentication for now
+	}
+
+	passwordService, err := s.container.GetPasswordService()
+	if err != nil {
+		s.logger.WithError(err).Warn("PasswordService not available, authentication endpoints will be disabled")
+		return nil // Continue without authentication for now
+	}
+
+	// For services that are not implemented yet, we'll use placeholders
+	// UserService and PermissionService are not implemented as separate services
+	// They are handled through other interfaces in the current architecture
+
+	// Create authentication handler with available services
+	// Note: We're passing nil for userService and permissionService since they're not implemented
+	s.authHandler = handlers.NewAuthHandler(
+		authService,
+		nil, // userService - not implemented as separate service
+		tokenService,
+		apiKeyService,
+		authorizationService,
+		nil, // permissionService - not implemented as separate service
+		securityService,
+		passwordService,
+		*s.logger, // Dereference the logger pointer
+	)
+
+	// Create authentication middleware
+	s.authMiddleware = middleware.NewAuthMiddleware(
+		tokenService,
+		apiKeyService,
+		authorizationService, // Use authorizationService instead of separate authzService
+		nil,                  // permissionService - not implemented as separate service
+		securityService,
+		s.logger,
+	)
+
+	s.logger.Info("Authentication handlers and middleware initialized")
 	return nil
 }
 
@@ -121,12 +200,25 @@ func (s *Server) SetupMiddleware() {
 
 // SetupRoutes configures routes
 func (s *Server) SetupRoutes() {
+	// Setup handlers first
+	if err := s.SetupHandlers(); err != nil {
+		s.logger.WithError(err).Error("Failed to setup handlers")
+	}
+
 	// API versioning
 	apiV1 := s.router.PathPrefix("/api/v1").Subrouter()
 
 	// Health check endpoint
 	s.router.HandleFunc("/health", s.healthCheckHandler).Methods("GET")
 	s.router.HandleFunc("/ready", s.readinessHandler).Methods("GET")
+
+	// Authentication routes
+	if s.authHandler != nil && s.authMiddleware != nil {
+		routes.RegisterAuthRoutes(apiV1, s.authHandler, s.authMiddleware)
+		s.logger.Info("Authentication routes registered")
+	} else {
+		s.logger.Warn("Authentication routes not registered - handlers not available")
+	}
 
 	// Broker endpoints (stubs for future implementation)
 	// TODO: Implement BrokerService and connect it

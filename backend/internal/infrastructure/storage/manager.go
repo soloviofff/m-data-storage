@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"m-data-storage/internal/domain/entities"
@@ -84,14 +85,21 @@ func NewManager(config Config, logger *logrus.Logger) (*Manager, error) {
 
 // Initialize initializes both storage systems
 func (m *Manager) Initialize(ctx context.Context) error {
-	// Initialize time series storage (QuestDB) first to get connection
+	// Initialize time series storage (QuestDB) - skip if connection fails for testing
+	var questDBConnected bool
 	if err := m.timeSeries.Connect(ctx); err != nil {
-		return fmt.Errorf("failed to initialize time series storage: %w", err)
+		m.logger.WithError(err).Warn("Failed to connect to QuestDB, continuing without time series storage")
+		questDBConnected = false
+	} else {
+		questDBConnected = true
 	}
 
-	// Create migration manager now that we have database connections
+	// Create migration manager - use nil for QuestDB if not connected
 	sqliteDB := m.metadata.GetDB()
-	questDB := m.timeSeries.GetDB()
+	var questDB *sql.DB
+	if questDBConnected {
+		questDB = m.timeSeries.GetDB()
+	}
 
 	migrationManager, err := migrations.NewManager(sqliteDB, questDB, m.logger)
 	if err != nil {
@@ -99,7 +107,7 @@ func (m *Manager) Initialize(ctx context.Context) error {
 	}
 	m.migrations = migrationManager
 
-	// Run migrations
+	// Run migrations (SQLite only if QuestDB is not available)
 	if err := m.RunMigrations(ctx); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}

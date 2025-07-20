@@ -37,7 +37,7 @@ type DatabaseConfig struct {
 
 // SQLiteConfig - SQLite configuration
 type SQLiteConfig struct {
-	Path            string        `yaml:"path" env:"PATH" envDefault:"./data/metadata.db"`
+	Path            string        `yaml:"path" env:"SQLITE_PATH" envDefault:"./data/metadata.db"`
 	MaxOpenConns    int           `yaml:"max_open_conns" env:"MAX_OPEN_CONNS" envDefault:"10"`
 	MaxIdleConns    int           `yaml:"max_idle_conns" env:"MAX_IDLE_CONNS" envDefault:"5"`
 	ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime" env:"CONN_MAX_LIFETIME" envDefault:"1h"`
@@ -78,10 +78,52 @@ type CORSConfig struct {
 
 // AuthConfig - authentication configuration
 type AuthConfig struct {
-	JWTSecret    string        `yaml:"jwt_secret" env:"JWT_SECRET"`
-	JWTExpiry    time.Duration `yaml:"jwt_expiry" env:"JWT_EXPIRY" envDefault:"24h"`
-	APIKeyHeader string        `yaml:"api_key_header" env:"API_KEY_HEADER" envDefault:"X-API-Key"`
-	Enabled      bool          `yaml:"enabled" env:"ENABLED" envDefault:"false"`
+	Enabled  bool           `yaml:"enabled" env:"ENABLED" envDefault:"true"`
+	JWT      JWTConfig      `yaml:"jwt" env-prefix:"JWT_"`
+	APIKey   APIKeyConfig   `yaml:"api_key" env-prefix:"API_KEY_"`
+	Password PasswordConfig `yaml:"password" env-prefix:"PASSWORD_"`
+	Security SecurityConfig `yaml:"security" env-prefix:"SECURITY_"`
+}
+
+// JWTConfig - JWT configuration
+type JWTConfig struct {
+	Secret             string        `yaml:"secret" env:"SECRET" envDefault:"your-secret-key-change-in-production"`
+	AccessTokenExpiry  time.Duration `yaml:"access_token_expiry" env:"ACCESS_TOKEN_EXPIRY" envDefault:"1h"`
+	RefreshTokenExpiry time.Duration `yaml:"refresh_token_expiry" env:"REFRESH_TOKEN_EXPIRY" envDefault:"168h"` // 7 days
+	Issuer             string        `yaml:"issuer" env:"ISSUER" envDefault:"m-data-storage"`
+	Audience           string        `yaml:"audience" env:"AUDIENCE" envDefault:"m-data-storage-api"`
+}
+
+// APIKeyConfig - API key configuration
+type APIKeyConfig struct {
+	Header        string        `yaml:"header" env:"HEADER" envDefault:"X-API-Key"`
+	Prefix        string        `yaml:"prefix" env:"PREFIX" envDefault:"mds_"`
+	Length        int           `yaml:"length" env:"LENGTH" envDefault:"32"`
+	DefaultExpiry time.Duration `yaml:"default_expiry" env:"DEFAULT_EXPIRY" envDefault:"8760h"` // 1 year
+}
+
+// PasswordConfig - password configuration
+type PasswordConfig struct {
+	MinLength      int    `yaml:"min_length" env:"MIN_LENGTH" envDefault:"8"`
+	RequireUpper   bool   `yaml:"require_upper" env:"REQUIRE_UPPER" envDefault:"true"`
+	RequireLower   bool   `yaml:"require_lower" env:"REQUIRE_LOWER" envDefault:"true"`
+	RequireDigit   bool   `yaml:"require_digit" env:"REQUIRE_DIGIT" envDefault:"true"`
+	RequireSpecial bool   `yaml:"require_special" env:"REQUIRE_SPECIAL" envDefault:"false"`
+	Argon2Memory   uint32 `yaml:"argon2_memory" env:"ARGON2_MEMORY" envDefault:"65536"` // 64MB
+	Argon2Time     uint32 `yaml:"argon2_time" env:"ARGON2_TIME" envDefault:"3"`         // 3 iterations
+	Argon2Threads  uint8  `yaml:"argon2_threads" env:"ARGON2_THREADS" envDefault:"2"`   // 2 threads
+	Argon2KeyLen   uint32 `yaml:"argon2_keylen" env:"ARGON2_KEYLEN" envDefault:"32"`    // 32 bytes
+}
+
+// SecurityConfig - security configuration
+type SecurityConfig struct {
+	MaxFailedAttempts int           `yaml:"max_failed_attempts" env:"MAX_FAILED_ATTEMPTS" envDefault:"5"`
+	LockoutDuration   time.Duration `yaml:"lockout_duration" env:"LOCKOUT_DURATION" envDefault:"15m"`
+	SessionTimeout    time.Duration `yaml:"session_timeout" env:"SESSION_TIMEOUT" envDefault:"24h"`
+	RequireHTTPS      bool          `yaml:"require_https" env:"REQUIRE_HTTPS" envDefault:"false"`
+	CSRFProtection    bool          `yaml:"csrf_protection" env:"CSRF_PROTECTION" envDefault:"true"`
+	RateLimitRequests int           `yaml:"rate_limit_requests" env:"RATE_LIMIT_REQUESTS" envDefault:"100"`
+	RateLimitWindow   time.Duration `yaml:"rate_limit_window" env:"RATE_LIMIT_WINDOW" envDefault:"1m"`
 }
 
 // LoggingConfig - logging configuration

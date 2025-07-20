@@ -108,11 +108,15 @@ func (m *AuthMiddleware) APIKeyAuthenticate(next http.Handler) http.Handler {
 		}
 
 		// Get user permissions
-		permissions, err := m.permissionService.GetUserPermissions(r.Context(), user.ID)
-		if err != nil {
-			m.logger.Error("Failed to get user permissions", "error", err.Error(), "user_id", user.ID)
-			m.writeInternalError(w, "Authentication error")
-			return
+		var permissions []string
+		if m.permissionService != nil {
+			if perms, err := m.permissionService.GetUserPermissions(r.Context(), user.ID); err != nil {
+				m.logger.Error("Failed to get user permissions", "error", err.Error(), "user_id", user.ID)
+				m.writeInternalError(w, "Authentication error")
+				return
+			} else {
+				permissions = perms
+			}
 		}
 
 		// Create auth context
@@ -157,15 +161,19 @@ func (m *AuthMiddleware) OptionalAuthenticate(next http.Handler) http.Handler {
 		if authCtx == nil {
 			if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {
 				if keyInfo, user, err := m.apiKeyService.ValidateAPIKey(r.Context(), apiKey); err == nil {
-					if permissions, err := m.permissionService.GetUserPermissions(r.Context(), user.ID); err == nil {
-						authCtx = &AuthContext{
-							UserID:      user.ID,
-							Username:    user.Username,
-							Email:       user.Email,
-							AuthMethod:  "api_key",
-							APIKeyID:    keyInfo.ID,
-							Permissions: permissions,
+					var permissions []string
+					if m.permissionService != nil {
+						if perms, err := m.permissionService.GetUserPermissions(r.Context(), user.ID); err == nil {
+							permissions = perms
 						}
+					}
+					authCtx = &AuthContext{
+						UserID:      user.ID,
+						Username:    user.Username,
+						Email:       user.Email,
+						AuthMethod:  "api_key",
+						APIKeyID:    keyInfo.ID,
+						Permissions: permissions,
 					}
 				}
 			}
@@ -287,4 +295,60 @@ func (m *AuthMiddleware) writeInternalError(w http.ResponseWriter, message strin
 		"message": message,
 	}
 	json.NewEncoder(w).Encode(response)
+}
+
+// RequireAuth middleware that requires authentication (either JWT or API key)
+func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var authCtx *AuthContext
+
+		// Try JWT first
+		if tokenStr := extractBearerToken(r); tokenStr != "" {
+			if user, err := m.tokenService.ValidateAccessToken(r.Context(), tokenStr); err == nil {
+				var roles []string
+				if user.Role != nil {
+					roles = []string{user.Role.Name}
+				}
+				authCtx = &AuthContext{
+					UserID:     user.ID,
+					Username:   user.Username,
+					Email:      user.Email,
+					Roles:      roles,
+					AuthMethod: "jwt",
+				}
+			}
+		}
+
+		// Try API key if JWT failed
+		if authCtx == nil {
+			if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {
+				if keyInfo, user, err := m.apiKeyService.ValidateAPIKey(r.Context(), apiKey); err == nil {
+					var permissions []string
+					if m.permissionService != nil {
+						if perms, err := m.permissionService.GetUserPermissions(r.Context(), user.ID); err == nil {
+							permissions = perms
+						}
+					}
+					authCtx = &AuthContext{
+						UserID:      user.ID,
+						Username:    user.Username,
+						Email:       user.Email,
+						AuthMethod:  "api_key",
+						APIKeyID:    keyInfo.ID,
+						Permissions: permissions,
+					}
+				}
+			}
+		}
+
+		// Require authentication
+		if authCtx == nil {
+			m.writeUnauthorizedError(w, "Authentication required")
+			return
+		}
+
+		// Add auth context to request
+		ctx := context.WithValue(r.Context(), "auth", authCtx)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }

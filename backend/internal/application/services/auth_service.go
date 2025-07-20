@@ -34,6 +34,70 @@ func NewAuthService(
 	}
 }
 
+// Register creates a new user account
+func (s *AuthService) Register(ctx context.Context, username, email, password string) (*entities.User, error) {
+	if username == "" || email == "" || password == "" {
+		return nil, errors.NewAuthError(errors.CodeInvalidInput, "username, email, and password are required", nil)
+	}
+
+	// Validate password strength
+	if err := s.passwordService.ValidatePasswordStrength(password); err != nil {
+		return nil, err
+	}
+
+	// Check if user already exists
+	existingUser, err := s.userStorage.GetUserByUsername(ctx, username)
+	if err != nil && !errors.IsUserNotFound(err) {
+		return nil, errors.NewAuthError("INTERNAL_ERROR", "failed to check username", err)
+	}
+	if existingUser != nil {
+		return nil, errors.NewAuthError(errors.CodeUserExists, "username already exists", nil)
+	}
+
+	existingUser, err = s.userStorage.GetUserByEmail(ctx, email)
+	if err != nil && !errors.IsUserNotFound(err) {
+		return nil, errors.NewAuthError("INTERNAL_ERROR", "failed to check email", err)
+	}
+	if existingUser != nil {
+		return nil, errors.NewAuthError(errors.CodeUserExists, "email already exists", nil)
+	}
+
+	// Hash password
+	passwordHash, err := s.passwordService.HashPassword(password)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create user entity
+	user := &entities.User{
+		ID:           uuid.New().String(),
+		Username:     username,
+		Email:        email,
+		PasswordHash: passwordHash,
+		Status:       entities.UserStatusActive,
+		RoleID:       "user-role-id", // Default user role
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+
+	// Save user to storage
+	err = s.userStorage.CreateUser(ctx, user)
+	if err != nil {
+		return nil, errors.NewAuthError("INTERNAL_ERROR", "failed to create user", err)
+	}
+
+	// Log security event
+	event := interfaces.SecurityEvent{
+		UserID:      user.ID,
+		EventType:   "user_registered",
+		Description: "New user registered",
+		Severity:    interfaces.SecuritySeverityLow,
+	}
+	s.securityService.LogSecurityEvent(ctx, event)
+
+	return user, nil
+}
+
 // Login authenticates a user and creates a session
 func (s *AuthService) Login(ctx context.Context, req *entities.LoginRequest) (*entities.LoginResponse, error) {
 	if req == nil {
@@ -551,4 +615,13 @@ func (s *AuthService) RevokeAllUserSessions(ctx context.Context, userID string) 
 	s.securityService.LogSecurityEvent(ctx, event)
 
 	return nil
+}
+
+// GetUserByID retrieves a user by their ID
+func (s *AuthService) GetUserByID(ctx context.Context, userID string) (*entities.User, error) {
+	user, err := s.userStorage.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, errors.NewAuthError(errors.CodeUserNotFound, "user not found", err)
+	}
+	return user, nil
 }

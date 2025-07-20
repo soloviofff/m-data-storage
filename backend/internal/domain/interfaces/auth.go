@@ -9,11 +9,17 @@ import (
 
 // AuthService defines the interface for authentication operations
 type AuthService interface {
+	// User registration
+	Register(ctx context.Context, username, email, password string) (*entities.User, error)
+
 	// Authentication
 	Login(ctx context.Context, req *entities.LoginRequest) (*entities.LoginResponse, error)
 	Logout(ctx context.Context, sessionID string) error
 	RefreshToken(ctx context.Context, req *entities.RefreshTokenRequest) (*entities.LoginResponse, error)
 	ValidateSession(ctx context.Context, sessionID string) (*entities.User, error)
+
+	// User management
+	GetUserByID(ctx context.Context, userID string) (*entities.User, error)
 
 	// Password management
 	ChangePassword(ctx context.Context, userID string, req *entities.ChangePasswordRequest) error
@@ -190,15 +196,15 @@ type SecurityEvent struct {
 type SecurityEventType string
 
 const (
-	SecurityEventLogin            SecurityEventType = "login"
-	SecurityEventLoginFailed      SecurityEventType = "login_failed"
-	SecurityEventLogout           SecurityEventType = "logout"
-	SecurityEventPasswordChange  SecurityEventType = "password_change"
-	SecurityEventAccountLocked   SecurityEventType = "account_locked"
-	SecurityEventAccountUnlocked SecurityEventType = "account_unlocked"
-	SecurityEventAPIKeyCreated   SecurityEventType = "api_key_created"
-	SecurityEventAPIKeyRevoked   SecurityEventType = "api_key_revoked"
-	SecurityEventPermissionDenied SecurityEventType = "permission_denied"
+	SecurityEventLogin              SecurityEventType = "login"
+	SecurityEventLoginFailed        SecurityEventType = "login_failed"
+	SecurityEventLogout             SecurityEventType = "logout"
+	SecurityEventPasswordChange     SecurityEventType = "password_change"
+	SecurityEventAccountLocked      SecurityEventType = "account_locked"
+	SecurityEventAccountUnlocked    SecurityEventType = "account_unlocked"
+	SecurityEventAPIKeyCreated      SecurityEventType = "api_key_created"
+	SecurityEventAPIKeyRevoked      SecurityEventType = "api_key_revoked"
+	SecurityEventPermissionDenied   SecurityEventType = "permission_denied"
 	SecurityEventSuspiciousActivity SecurityEventType = "suspicious_activity"
 )
 

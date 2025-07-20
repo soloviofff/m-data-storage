@@ -31,7 +31,7 @@ api:
 database:
   # SQLite for metadata
   sqlite:
-    path: "./data/metadata.db"
+    path: "/Users/thatmean/work/m-data-storage/backend/data/metadata.db"
     max_open_conns: 10
     max_idle_conns: 5
     conn_max_lifetime: "1h"

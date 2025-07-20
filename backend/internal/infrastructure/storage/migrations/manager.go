@@ -30,11 +30,17 @@ func NewManager(sqliteDB, questDB *sql.DB, logger *logrus.Logger) (*Manager, err
 	if sqliteDB == nil {
 		return nil, fmt.Errorf("SQLite database connection is required")
 	}
+	// QuestDB is optional for authentication testing
 	if questDB == nil {
-		return nil, fmt.Errorf("QuestDB database connection is required")
+		logger.Warn("QuestDB connection is nil, migrations will only run for SQLite")
 	}
 	if logger == nil {
 		logger = logrus.New()
+	}
+
+	var questMgr *Migrator
+	if questDB != nil {
+		questMgr = NewMigrator(questDB, "schema_migrations")
 	}
 
 	manager := &Manager{
@@ -42,7 +48,7 @@ func NewManager(sqliteDB, questDB *sql.DB, logger *logrus.Logger) (*Manager, err
 		questDB:   questDB,
 		logger:    logger,
 		sqliteMgr: NewMigrator(sqliteDB, "schema_migrations"),
-		questMgr:  NewMigrator(questDB, "schema_migrations"),
+		questMgr:  questMgr,
 	}
 
 	// Load migrations
@@ -68,18 +74,22 @@ func (m *Manager) loadMigrations() error {
 	m.sqliteMgr.AddMigrations(sqliteMigs)
 	m.logger.WithField("count", len(sqliteMigs)).Info("Loaded SQLite migrations")
 
-	// Load QuestDB migrations
-	questMigs, err := LoadMigrationsFromFS(questdbMigrations, "questdb")
-	if err != nil {
-		return fmt.Errorf("failed to load QuestDB migrations: %w", err)
-	}
+	// Load QuestDB migrations only if QuestDB is available
+	if m.questMgr != nil {
+		questMigs, err := LoadMigrationsFromFS(questdbMigrations, "questdb")
+		if err != nil {
+			return fmt.Errorf("failed to load QuestDB migrations: %w", err)
+		}
 
-	if err := ValidateMigrations(questMigs); err != nil {
-		return fmt.Errorf("invalid QuestDB migrations: %w", err)
-	}
+		if err := ValidateMigrations(questMigs); err != nil {
+			return fmt.Errorf("invalid QuestDB migrations: %w", err)
+		}
 
-	m.questMgr.AddMigrations(questMigs)
-	m.logger.WithField("count", len(questMigs)).Info("Loaded QuestDB migrations")
+		m.questMgr.AddMigrations(questMigs)
+		m.logger.WithField("count", len(questMigs)).Info("Loaded QuestDB migrations")
+	} else {
+		m.logger.Info("Skipping QuestDB migrations (QuestDB not available)")
+	}
 
 	return nil
 }
@@ -96,12 +106,16 @@ func (m *Manager) MigrateUp(ctx context.Context) error {
 	}
 	m.logger.Info("SQLite migration completed successfully")
 
-	// Migrate QuestDB
-	m.logger.Info("Migrating QuestDB database")
-	if err := m.questMgr.Up(ctx); err != nil {
-		return fmt.Errorf("QuestDB migration failed: %w", err)
+	// Migrate QuestDB only if available
+	if m.questMgr != nil {
+		m.logger.Info("Migrating QuestDB database")
+		if err := m.questMgr.Up(ctx); err != nil {
+			return fmt.Errorf("QuestDB migration failed: %w", err)
+		}
+		m.logger.Info("QuestDB migration completed successfully")
+	} else {
+		m.logger.Info("Skipping QuestDB migration (QuestDB not available)")
 	}
-	m.logger.Info("QuestDB migration completed successfully")
 
 	duration := time.Since(start)
 	m.logger.WithField("duration", duration).Info("All database migrations completed successfully")
