@@ -93,8 +93,8 @@ type APIKey struct {
 	ID          string     `json:"id" db:"id"`
 	UserID      string     `json:"user_id" db:"user_id"`
 	Name        string     `json:"name" db:"name"`
-	KeyHash     string     `json:"-" db:"key_hash"` // Never expose key hash
-	Prefix      string     `json:"prefix" db:"prefix"` // First 8 chars for identification
+	KeyHash     string     `json:"-" db:"key_hash"`              // Never expose key hash
+	Prefix      string     `json:"prefix" db:"prefix"`           // First 8 chars for identification
 	Permissions []string   `json:"permissions" db:"permissions"` // JSON array in DB
 	ExpiresAt   *time.Time `json:"expires_at" db:"expires_at"`
 	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
@@ -135,30 +135,36 @@ type CreateUserRequest struct {
 
 // UpdateUserRequest represents a request to update a user
 type UpdateUserRequest struct {
-	Email     *string     `json:"email,omitempty" validate:"omitempty,email"`
-	FirstName *string     `json:"first_name,omitempty" validate:"omitempty,max=100"`
-	LastName  *string     `json:"last_name,omitempty" validate:"omitempty,max=100"`
-	Status    *UserStatus `json:"status,omitempty"`
-	RoleID    *string     `json:"role_id,omitempty"`
+	Email        *string     `json:"email,omitempty" validate:"omitempty,email"`
+	FirstName    *string     `json:"first_name,omitempty" validate:"omitempty,max=100"`
+	LastName     *string     `json:"last_name,omitempty" validate:"omitempty,max=100"`
+	Status       *UserStatus `json:"status,omitempty"`
+	RoleID       *string     `json:"role_id,omitempty"`
+	PasswordHash *string     `json:"-"` // Never expose password hash in JSON
+	LastLoginAt  *time.Time  `json:"last_login_at,omitempty"`
 }
 
 // ChangePasswordRequest represents a request to change user password
 type ChangePasswordRequest struct {
-	CurrentPassword string `json:"current_password" validate:"required"`
-	NewPassword     string `json:"new_password" validate:"required,min=8"`
+	CurrentPassword    string `json:"current_password" validate:"required"`
+	NewPassword        string `json:"new_password" validate:"required,min=8"`
+	KeepCurrentSession bool   `json:"keep_current_session,omitempty"`
+	CurrentSessionID   string `json:"current_session_id,omitempty"`
 }
 
 // CreateAPIKeyRequest represents a request to create a new API key
 type CreateAPIKeyRequest struct {
-	Name        string    `json:"name" validate:"required,min=1,max=100"`
-	Permissions []string  `json:"permissions" validate:"required,min=1"`
+	Name        string     `json:"name" validate:"required,min=1,max=100"`
+	Permissions []string   `json:"permissions" validate:"required,min=1"`
 	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
 }
 
 // LoginRequest represents a login request
 type LoginRequest struct {
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	Username  string `json:"username" validate:"required"`
+	Password  string `json:"password" validate:"required"`
+	IPAddress string `json:"ip_address,omitempty"`
+	UserAgent string `json:"user_agent,omitempty"`
 }
 
 // LoginResponse represents a login response
