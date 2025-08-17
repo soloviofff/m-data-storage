@@ -32,7 +32,8 @@
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:migrate": "node ./scripts/migrate.js",
     "db:seed": "ts-node scripts/seed.ts",
-    "test": "node --test --test-reporter=spec test/*.test.mjs"
+    "test": "node --test --test-reporter=spec test/*.test.mjs",
+    "openapi:gen": "node ./scripts/generate-openapi.mjs"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [

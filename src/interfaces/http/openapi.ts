@@ -12,10 +12,12 @@ export const OhlcvItemSchema = z.object({
 	v: z.number(),
 });
 
-export const ReadResponseSchema = z.object({
-	items: z.array(OhlcvItemSchema),
-	nextPageToken: z.string().optional(),
-});
+export const ReadResponseSchema = z
+	.object({
+		items: z.array(OhlcvItemSchema),
+		nextPageToken: z.string().optional(),
+	})
+	.openapi('ReadResponse');
 
 export const IngestBodySchema = z.object({
 	broker_id: z.number().int().positive(),
@@ -111,3 +113,10 @@ export const TaskCompleteBodySchema = z
 export const TaskCompleteResponseSchema = z
 	.object({ item: TaskItemSchema })
 	.openapi('TaskCompleteResponse');
+
+// Common error/ok schemas
+export const ErrorResponseSchema = z
+	.object({ code: z.string(), message: z.string(), details: z.any().optional() })
+	.openapi('ErrorResponse');
+
+export const OkResponseSchema = z.object({ ok: z.boolean() }).openapi('OkResponse');
