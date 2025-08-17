@@ -4,7 +4,7 @@ import {
 	ingestOhlcvBatch,
 	type IngestItem,
 } from '../../../infrastructure/repositories/ohlcvIngestRepository';
-import { IngestBodySchema } from '../openapi';
+import { IngestBodySchema, IngestResponseSchema } from '../openapi';
 
 const bodySchema = z.object({
 	broker_id: z.coerce.number().int().positive(),
@@ -26,7 +26,14 @@ const bodySchema = z.object({
 export async function registerIngestRoutes(app: FastifyInstance) {
 	app.post(
 		'/v1/ingest/ohlcv',
-		{ schema: { summary: 'Ingest OHLCV batch', tags: ['ingest'], body: IngestBodySchema } },
+		{
+			schema: {
+				summary: 'Ingest OHLCV batch',
+				tags: ['ingest'],
+				body: IngestBodySchema,
+				response: { 200: IngestResponseSchema },
+			},
+		},
 		async (req, reply) => {
 			const parsed = bodySchema.safeParse(req.body);
 			if (!parsed.success) {
