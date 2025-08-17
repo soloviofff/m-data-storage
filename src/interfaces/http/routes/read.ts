@@ -40,7 +40,7 @@ export async function registerReadRoutes(app: FastifyInstance) {
 			schema: {
 				summary: 'Read OHLCV bars with optional aggregation',
 				tags: ['read'],
-				response: { 200: ReadResponseSchema.openapi({ ref: 'ReadResponse' }) },
+				response: { 200: ReadResponseSchema.openapi('ReadResponse') },
 			},
 		},
 		async (req, reply) => {

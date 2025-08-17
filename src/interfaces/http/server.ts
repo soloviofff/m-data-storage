@@ -4,6 +4,7 @@ import { registerHealthRoutes } from './routes/health';
 import { registerReadRoutes } from './routes/read';
 import { registerIngestRoutes } from './routes/ingest';
 import { registerTaskRoutes } from './routes/tasks';
+import { registerRegistryRoutes } from './routes/registry';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 
@@ -28,6 +29,7 @@ export async function buildServer() {
 	await registerReadRoutes(app);
 	await registerIngestRoutes(app);
 	await registerTaskRoutes(app);
+	await registerRegistryRoutes(app);
 
 	// Global token validation for all protected endpoints (including read/write)
 	app.addHook('onRequest', async (req, reply) => {

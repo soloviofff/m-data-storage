@@ -9,6 +9,7 @@ import {
 	uuid,
 	real,
 	doublePrecision,
+	boolean,
 } from 'drizzle-orm/pg-core';
 
 // Schemas
@@ -20,12 +21,14 @@ export const brokers = registry.table('brokers', {
 	id: serial('id').primaryKey(),
 	code: text('code').notNull().unique(),
 	name: text('name').notNull(),
+	isActive: boolean('is_active').notNull().default(true),
 });
 
 export const instruments = registry.table('instruments', {
 	id: serial('id').primaryKey(),
 	symbol: text('symbol').notNull().unique(),
 	name: text('name'),
+	isActive: boolean('is_active').notNull().default(true),
 });
 
 export const instrumentMappings = registry.table(

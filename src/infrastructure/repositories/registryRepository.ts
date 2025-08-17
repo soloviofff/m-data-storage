@@ -9,9 +9,19 @@ export async function listBrokerInstrumentPairs(
 	brokerId?: number,
 ): Promise<BrokerInstrumentPair[]> {
 	const pool = getPool();
-	const sql = brokerId
-		? 'SELECT broker_id, instrument_id FROM registry.instrument_mappings WHERE broker_id = $1'
-		: 'SELECT broker_id, instrument_id FROM registry.instrument_mappings';
-	const res = await pool.query(sql, brokerId ? [brokerId] : []);
+	const params: Array<number> = [];
+	let where = 'b.is_active = true AND i.is_active = true';
+	if (typeof brokerId === 'number') {
+		params.push(brokerId);
+		where += ` AND m.broker_id = $${params.length}`;
+	}
+	const sql = `
+		SELECT m.broker_id, m.instrument_id
+		FROM registry.instrument_mappings m
+		JOIN registry.brokers b ON b.id = m.broker_id
+		JOIN registry.instruments i ON i.id = m.instrument_id
+		WHERE ${where}
+	`;
+	const res = await pool.query(sql, params);
 	return (res.rows ?? []) as BrokerInstrumentPair[];
 }
