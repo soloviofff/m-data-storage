@@ -4,22 +4,11 @@ import {
 	completeTask,
 	reserveNextTasks,
 } from '../../../infrastructure/repositories/taskRepository';
-import {
-	TasksListResponseSchema,
-	TaskCompleteBodySchema,
-	TaskCompleteResponseSchema,
-} from '../openapi';
 
 export async function registerTaskRoutes(app: FastifyInstance) {
 	app.get(
 		'/v1/tasks/next',
-		{
-			schema: {
-				summary: 'Reserve next tasks',
-				tags: ['tasks'],
-				response: { 200: TasksListResponseSchema },
-			},
-		},
+		{ schema: { summary: 'Reserve next tasks', tags: ['tasks'] } },
 		async (req, reply) => {
 			const schema = z.object({
 				broker_id: z.coerce.number().int().positive().optional(),
@@ -63,17 +52,7 @@ export async function registerTaskRoutes(app: FastifyInstance) {
 
 	app.post(
 		'/v1/tasks/:id/complete',
-		{
-			schema: {
-				summary: 'Complete reserved task',
-				tags: ['tasks'],
-				body: TaskCompleteBodySchema,
-				response: {
-					200: TaskCompleteResponseSchema,
-					409: z.object({ code: z.string(), message: z.string() }),
-				},
-			},
-		},
+		{ schema: { summary: 'Complete reserved task', tags: ['tasks'] } },
 		async (req, reply) => {
 			const paramsSchema = z.object({ id: z.string().uuid() });
 			const bodySchema = z.object({ status: z.enum(['done', 'failed']) });

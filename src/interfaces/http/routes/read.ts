@@ -6,7 +6,7 @@ import {
 	readOneMinuteBars,
 	type Timeframe,
 } from '../../../infrastructure/repositories/ohlcvReadRepository';
-import { ReadResponseSchema } from '../openapi';
+// Swagger note: response schema omitted to avoid runtime JSON Schema issues
 
 const querySchema = z.object({
 	broker_id: z.coerce.number().int().positive(),
@@ -36,13 +36,7 @@ function encodePageToken(date: Date): string {
 export async function registerReadRoutes(app: FastifyInstance) {
 	app.get(
 		'/v1/ohlcv',
-		{
-			schema: {
-				summary: 'Read OHLCV bars with optional aggregation',
-				tags: ['read'],
-				response: { 200: ReadResponseSchema.openapi('ReadResponse') },
-			},
-		},
+		{ schema: { summary: 'Read OHLCV bars with optional aggregation', tags: ['read'] } },
 		async (req, reply) => {
 			const parsed = querySchema.safeParse(req.query);
 			if (!parsed.success) {

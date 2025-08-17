@@ -1,13 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { getPool } from '../../../infrastructure/db/client';
-import {
-	BrokersUpsertBodySchema,
-	InstrumentsUpsertBodySchema,
-	BrokersListResponseSchema,
-	InstrumentsListResponseSchema,
-	RemovedCountResponseSchema,
-} from '../openapi';
 
 const BrokersSchema = z.array(
 	z.object({
@@ -27,14 +20,7 @@ const InstrumentsSchema = z.array(
 export async function registerRegistryRoutes(app: FastifyInstance) {
 	app.post(
 		'/v1/admin/brokers',
-		{
-			schema: {
-				summary: 'Upsert brokers',
-				tags: ['registry'],
-				body: BrokersUpsertBodySchema,
-				response: { 200: z.object({ ok: z.boolean() }) },
-			},
-		},
+		{ schema: { summary: 'Upsert brokers', tags: ['registry'] } },
 		async (req, reply) => {
 			const parsed = BrokersSchema.safeParse(req.body);
 			if (!parsed.success)
@@ -52,7 +38,7 @@ export async function registerRegistryRoutes(app: FastifyInstance) {
 				.join(',');
 			await pool.query(
 				`INSERT INTO registry.brokers (code, name, is_active) VALUES ${tuples}
-			 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, is_active = EXCLUDED.is_active`,
+				 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, is_active = EXCLUDED.is_active`,
 				values,
 			);
 			return { ok: true };
@@ -61,13 +47,7 @@ export async function registerRegistryRoutes(app: FastifyInstance) {
 
 	app.get(
 		'/v1/admin/brokers',
-		{
-			schema: {
-				summary: 'List brokers',
-				tags: ['registry'],
-				response: { 200: BrokersListResponseSchema },
-			},
-		},
+		{ schema: { summary: 'List brokers', tags: ['registry'] } },
 		async () => {
 			const pool = getPool();
 			const res = await pool.query(
@@ -79,14 +59,7 @@ export async function registerRegistryRoutes(app: FastifyInstance) {
 
 	app.post(
 		'/v1/admin/instruments',
-		{
-			schema: {
-				summary: 'Upsert instruments',
-				tags: ['registry'],
-				body: InstrumentsUpsertBodySchema,
-				response: { 200: z.object({ ok: z.boolean() }) },
-			},
-		},
+		{ schema: { summary: 'Upsert instruments', tags: ['registry'] } },
 		async (req, reply) => {
 			const parsed = InstrumentsSchema.safeParse(req.body);
 			if (!parsed.success)
@@ -104,7 +77,7 @@ export async function registerRegistryRoutes(app: FastifyInstance) {
 				.join(',');
 			await pool.query(
 				`INSERT INTO registry.instruments (symbol, name, is_active) VALUES ${tuples}
-			 ON CONFLICT (symbol) DO UPDATE SET name = EXCLUDED.name, is_active = EXCLUDED.is_active`,
+				 ON CONFLICT (symbol) DO UPDATE SET name = EXCLUDED.name, is_active = EXCLUDED.is_active`,
 				values,
 			);
 			return { ok: true };
@@ -113,13 +86,7 @@ export async function registerRegistryRoutes(app: FastifyInstance) {
 
 	app.get(
 		'/v1/admin/instruments',
-		{
-			schema: {
-				summary: 'List instruments',
-				tags: ['registry'],
-				response: { 200: InstrumentsListResponseSchema },
-			},
-		},
+		{ schema: { summary: 'List instruments', tags: ['registry'] } },
 		async () => {
 			const pool = getPool();
 			const res = await pool.query(
@@ -132,13 +99,7 @@ export async function registerRegistryRoutes(app: FastifyInstance) {
 	// Stop watching all instruments for a broker: remove mappings for broker_id
 	app.delete(
 		'/v1/admin/watch/broker/:broker_id',
-		{
-			schema: {
-				summary: 'Unwatch all instruments for broker',
-				tags: ['registry'],
-				response: { 200: RemovedCountResponseSchema },
-			},
-		},
+		{ schema: { summary: 'Unwatch all instruments for broker', tags: ['registry'] } },
 		async (req, reply) => {
 			const schema = z.object({ broker_id: z.coerce.number().int().positive() });
 			const parsed = schema.safeParse(req.params);
@@ -157,13 +118,7 @@ export async function registerRegistryRoutes(app: FastifyInstance) {
 	// Stop watching instrument across all brokers: remove mappings for instrument_id
 	app.delete(
 		'/v1/admin/watch/instrument/:instrument_id',
-		{
-			schema: {
-				summary: 'Unwatch instrument globally',
-				tags: ['registry'],
-				response: { 200: RemovedCountResponseSchema },
-			},
-		},
+		{ schema: { summary: 'Unwatch instrument globally', tags: ['registry'] } },
 		async (req, reply) => {
 			const schema = z.object({ instrument_id: z.coerce.number().int().positive() });
 			const parsed = schema.safeParse(req.params);
@@ -184,13 +139,7 @@ export async function registerRegistryRoutes(app: FastifyInstance) {
 	// Stop watching a specific pair (broker, instrument)
 	app.delete(
 		'/v1/admin/watch/:broker_id/:instrument_id',
-		{
-			schema: {
-				summary: 'Unwatch specific broker-instrument pair',
-				tags: ['registry'],
-				response: { 200: RemovedCountResponseSchema },
-			},
-		},
+		{ schema: { summary: 'Unwatch specific broker-instrument pair', tags: ['registry'] } },
 		async (req, reply) => {
 			const schema = z.object({
 				broker_id: z.coerce.number().int().positive(),
