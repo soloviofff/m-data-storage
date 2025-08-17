@@ -1,0 +1,51 @@
+{
+  "name": "m-data-storage",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:soloviofff/m-data-storage.git",
+  "author": "Serghei Soloviov <thatmean@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/pg": "^8.15.5",
+    "@typescript-eslint/eslint-plugin": "6.21.0",
+    "@typescript-eslint/parser": "6.21.0",
+    "cross-env": "7.0.3",
+    "drizzle-kit": "^0.31.4",
+    "eslint": "8.57.0",
+    "eslint-config-prettier": "9.1.0",
+    "eslint-plugin-import": "2.29.1",
+    "eslint-plugin-unused-imports": "3.2.0",
+    "husky": "8.0.3",
+    "lint-staged": "13.3.0",
+    "prettier": "3.3.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  },
+  "scripts": {
+    "dev": "ts-node src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "format": "prettier --write .",
+    "prepare": "husky install",
+    "drizzle:generate": "drizzle-kit generate",
+    "drizzle:migrate": "node ./scripts/migrate.js",
+    "db:seed": "ts-node scripts/seed.ts"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "dotenv": "16.4.5",
+    "dotenv-expand": "10.0.0",
+    "drizzle-orm": "^0.44.4",
+    "fastify": "4.28.1",
+    "pg": "^8.16.3",
+    "pino": "9.5.0",
+    "zod": "3.23.8"
+  }
+}
