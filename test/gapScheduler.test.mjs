@@ -17,6 +17,9 @@ test('computeMissingMinuteRanges finds gaps', () => {
 
 test('gap scheduler creates tasks for missing minutes', async () => {
   const pool = getPool();
+  // Ensure is_active columns exist for tests
+  await pool.query("ALTER TABLE registry.brokers ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true NOT NULL");
+  await pool.query("ALTER TABLE registry.instruments ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true NOT NULL");
   // Ensure mapping pair exists
   await pool.query("INSERT INTO registry.brokers (id, code, name) VALUES (1, 'demo', 'Demo') ON CONFLICT DO NOTHING");
   await pool.query("INSERT INTO registry.instruments (id, symbol, name) VALUES (1, 'BTCUSDT', 'BTC') ON CONFLICT DO NOTHING");
