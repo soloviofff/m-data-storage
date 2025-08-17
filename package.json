@@ -31,7 +31,8 @@
     "prepare": "husky install",
     "drizzle:generate": "drizzle-kit generate",
     "drizzle:migrate": "node ./scripts/migrate.js",
-    "db:seed": "ts-node scripts/seed.ts"
+    "db:seed": "ts-node scripts/seed.ts",
+    "test": "node --test --test-reporter=spec test/*.test.mjs"
   },
   "lint-staged": {
     "src/**/*.{ts,tsx}": [
@@ -40,6 +41,9 @@
     ]
   },
   "dependencies": {
+    "@asteasolutions/zod-to-openapi": "7.2.0",
+    "@fastify/swagger": "8.14.0",
+    "@fastify/swagger-ui": "3.0.0",
     "dotenv": "16.4.5",
     "dotenv-expand": "10.0.0",
     "drizzle-orm": "^0.44.4",

@@ -14,6 +14,7 @@ const envSchema = z.object({
 	DATABASE_URL: z.string().min(1),
 	FINALIZATION_WINDOW_HOURS: z.coerce.number().int().positive().default(24),
 	SUPPORTED_TIMEFRAMES: z.string().default('1m,5m,15m,30m,1h,4h,1d'),
+	SWAGGER_SERVER_URL: z.string().url().default('http://localhost:8080'),
 });
 
 const parsed = envSchema.safeParse(process.env);

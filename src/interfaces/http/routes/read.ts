@@ -6,6 +6,7 @@ import {
 	readOneMinuteBars,
 	type Timeframe,
 } from '../../../infrastructure/repositories/ohlcvReadRepository';
+import { ReadResponseSchema } from '../openapi';
 
 const querySchema = z.object({
 	broker_id: z.coerce.number().int().positive(),
@@ -33,49 +34,57 @@ function encodePageToken(date: Date): string {
 }
 
 export async function registerReadRoutes(app: FastifyInstance) {
-	app.get('/v1/ohlcv', async (req, reply) => {
-		const parsed = querySchema.safeParse(req.query);
-		if (!parsed.success) {
-			return reply
-				.code(400)
-				.send({
+	app.get(
+		'/v1/ohlcv',
+		{
+			schema: {
+				summary: 'Read OHLCV bars with optional aggregation',
+				tags: ['read'],
+				response: { 200: ReadResponseSchema.openapi({ ref: 'ReadResponse' }) },
+			},
+		},
+		async (req, reply) => {
+			const parsed = querySchema.safeParse(req.query);
+			if (!parsed.success) {
+				return reply.code(400).send({
 					code: 'BAD_REQUEST',
 					message: 'Invalid query',
 					details: parsed.error.flatten(),
 				});
-		}
-		const { broker_id, instrument_id, tf, pageToken } = parsed.data as {
-			broker_id: number;
-			instrument_id: number;
-			tf: Timeframe;
-			pageToken?: string;
-		};
+			}
+			const { broker_id, instrument_id, tf, pageToken } = parsed.data as {
+				broker_id: number;
+				instrument_id: number;
+				tf: Timeframe;
+				pageToken?: string;
+			};
 
-		const now = new Date();
-		const upperBound = !pageToken ? now : new Date(Date.now());
-		const strictlyLessThanTs = decodePageToken(pageToken);
-		const pageWindowMs = 24 * 60 * 60 * 1000;
+			const now = new Date();
+			const upperBound = !pageToken ? now : new Date(Date.now());
+			const strictlyLessThanTs = decodePageToken(pageToken);
+			const pageWindowMs = 24 * 60 * 60 * 1000;
 
-		const rows = await readOneMinuteBars({
-			brokerId: broker_id,
-			instrumentId: instrument_id,
-			upperBound,
-			pageWindowMs,
-			strictlyLessThanTs,
-		});
-		const items = aggregateBars(rows, tf);
-		let nextPageToken: string | undefined;
-		if (rows.length > 0) {
-			const lastTs = rows[rows.length - 1].ts;
-			const more = await hasMoreData({
+			const rows = await readOneMinuteBars({
 				brokerId: broker_id,
 				instrumentId: instrument_id,
 				upperBound,
 				pageWindowMs,
-				strictlyLessThanTs: lastTs,
+				strictlyLessThanTs,
 			});
-			if (more) nextPageToken = encodePageToken(lastTs);
-		}
-		return { items, nextPageToken };
-	});
+			const items = aggregateBars(rows, tf);
+			let nextPageToken: string | undefined;
+			if (rows.length > 0) {
+				const lastTs = rows[rows.length - 1].ts;
+				const more = await hasMoreData({
+					brokerId: broker_id,
+					instrumentId: instrument_id,
+					upperBound,
+					pageWindowMs,
+					strictlyLessThanTs: lastTs,
+				});
+				if (more) nextPageToken = encodePageToken(lastTs);
+			}
+			return { items, nextPageToken };
+		},
+	);
 }
