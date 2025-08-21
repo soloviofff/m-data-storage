@@ -32,7 +32,11 @@ export function buildOpenApiDocument(serverUrl: string) {
 		'BrokersUpsertBody',
 		BrokersUpsertBodySchema ??
 			z.array(
-				z.object({ code: z.string(), name: z.string(), isActive: z.boolean().optional() }),
+				z.object({
+					system_name: z.string(),
+					name: z.string(),
+					isActive: z.boolean().optional(),
+				}),
 			),
 	);
 	registry.register(
@@ -40,6 +44,7 @@ export function buildOpenApiDocument(serverUrl: string) {
 		InstrumentsUpsertBodySchema ??
 			z.array(
 				z.object({
+					broker_system_name: z.string(),
 					symbol: z.string(),
 					name: z.string().optional(),
 					isActive: z.boolean().optional(),
@@ -52,8 +57,7 @@ export function buildOpenApiDocument(serverUrl: string) {
 			z.object({
 				items: z.array(
 					z.object({
-						id: z.number(),
-						code: z.string(),
+						system_name: z.string(),
 						name: z.string(),
 						is_active: z.boolean(),
 					}),
@@ -66,7 +70,7 @@ export function buildOpenApiDocument(serverUrl: string) {
 			z.object({
 				items: z.array(
 					z.object({
-						id: z.number(),
+						broker_system_name: z.string().optional(),
 						symbol: z.string(),
 						name: z.string().nullable().optional(),
 						is_active: z.boolean(),
@@ -114,8 +118,18 @@ export function buildOpenApiDocument(serverUrl: string) {
 		get: {
 			summary: 'Read OHLCV bars with optional aggregation',
 			parameters: [
-				{ name: 'broker_id', in: 'query', required: true, schema: { type: 'integer' } },
-				{ name: 'instrument_id', in: 'query', required: true, schema: { type: 'integer' } },
+				{
+					name: 'broker_system_name',
+					in: 'query',
+					required: true,
+					schema: { type: 'string' },
+				},
+				{
+					name: 'instrument_symbol',
+					in: 'query',
+					required: true,
+					schema: { type: 'string' },
+				},
 				{
 					name: 'tf',
 					in: 'query',
@@ -173,12 +187,17 @@ export function buildOpenApiDocument(serverUrl: string) {
 		get: {
 			summary: 'Reserve next tasks',
 			parameters: [
-				{ name: 'broker_id', in: 'query', required: false, schema: { type: 'integer' } },
 				{
-					name: 'instrument_ids',
+					name: 'broker_system_name',
 					in: 'query',
 					required: false,
-					schema: { type: 'string', description: 'Comma-separated instrument ids' },
+					schema: { type: 'string' },
+				},
+				{
+					name: 'instrument_symbols',
+					in: 'query',
+					required: false,
+					schema: { type: 'string', description: 'Comma-separated symbols' },
 				},
 				{
 					name: 'limit',
@@ -304,11 +323,16 @@ export function buildOpenApiDocument(serverUrl: string) {
 		},
 	});
 
-	definePath('/v1/admin/watch/broker/{broker_id}', {
+	definePath('/v1/admin/watch/broker/{broker_system_name}', {
 		delete: {
 			summary: 'Unwatch all instruments for broker',
 			parameters: [
-				{ name: 'broker_id', in: 'path', required: true, schema: { type: 'integer' } },
+				{
+					name: 'broker_system_name',
+					in: 'path',
+					required: true,
+					schema: { type: 'string' },
+				},
 			],
 			responses: {
 				'200': {
@@ -319,11 +343,16 @@ export function buildOpenApiDocument(serverUrl: string) {
 		},
 	});
 
-	definePath('/v1/admin/watch/instrument/{instrument_id}', {
+	definePath('/v1/admin/watch/instrument/{instrument_symbol}', {
 		delete: {
 			summary: 'Unwatch instrument globally',
 			parameters: [
-				{ name: 'instrument_id', in: 'path', required: true, schema: { type: 'integer' } },
+				{
+					name: 'instrument_symbol',
+					in: 'path',
+					required: true,
+					schema: { type: 'string' },
+				},
 			],
 			responses: {
 				'200': {
@@ -334,12 +363,22 @@ export function buildOpenApiDocument(serverUrl: string) {
 		},
 	});
 
-	definePath('/v1/admin/watch/{broker_id}/{instrument_id}', {
+	definePath('/v1/admin/watch/{broker_system_name}/{instrument_symbol}', {
 		delete: {
 			summary: 'Unwatch specific broker-instrument pair',
 			parameters: [
-				{ name: 'broker_id', in: 'path', required: true, schema: { type: 'integer' } },
-				{ name: 'instrument_id', in: 'path', required: true, schema: { type: 'integer' } },
+				{
+					name: 'broker_system_name',
+					in: 'path',
+					required: true,
+					schema: { type: 'string' },
+				},
+				{
+					name: 'instrument_symbol',
+					in: 'path',
+					required: true,
+					schema: { type: 'string' },
+				},
 			],
 			responses: {
 				'200': {

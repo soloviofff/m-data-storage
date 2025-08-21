@@ -21,8 +21,8 @@ test('ingest then read 1m and 5m', async () => {
     const now = Date.now();
     const m0 = Math.floor((now - 10 * 60 * 1000) / 60000) * 60000; // t-10m aligned
     const body = {
-      broker_id: 1,
-      instrument_id: 1,
+      broker_system_name: 'demo',
+      instrument_symbol: 'BTCUSDT',
       items: [
         { ts: new Date(m0).toISOString(), o: 100, h: 101, l: 99, c: 100.5, v: 10 },
         { ts: new Date(m0 + 60_000).toISOString(), o: 100.5, h: 102, l: 100, c: 101, v: 20 },
@@ -38,10 +38,7 @@ test('ingest then read 1m and 5m', async () => {
     assert.ok(typeof ingestRes.inserted === 'number');
 
     // Read 1m
-    resp = await fetch(
-      `${baseUrl}/v1/ohlcv?broker_id=1&instrument_id=1&tf=1m`,
-      { headers: authHeaders },
-    );
+    resp = await fetch(`${baseUrl}/v1/ohlcv?broker_system_name=demo&instrument_symbol=BTCUSDT&tf=1m`, { headers: authHeaders });
     assert.equal(resp.status, 200);
     const read1m = await resp.json();
     assert.ok(Array.isArray(read1m.items));
@@ -49,10 +46,7 @@ test('ingest then read 1m and 5m', async () => {
     assert.ok('ts' in read1m.items[0] && 'o' in read1m.items[0]);
 
     // Read 5m aggregated
-    resp = await fetch(
-      `${baseUrl}/v1/ohlcv?broker_id=1&instrument_id=1&tf=5m`,
-      { headers: authHeaders },
-    );
+    resp = await fetch(`${baseUrl}/v1/ohlcv?broker_system_name=demo&instrument_symbol=BTCUSDT&tf=5m`, { headers: authHeaders });
     assert.equal(resp.status, 200);
     const read5m = await resp.json();
     assert.ok(Array.isArray(read5m.items));

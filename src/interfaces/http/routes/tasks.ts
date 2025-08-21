@@ -4,6 +4,7 @@ import {
 	completeTask,
 	reserveNextTasks,
 } from '../../../infrastructure/repositories/taskRepository';
+import { getPool } from '../../../infrastructure/db/client';
 
 export async function registerTaskRoutes(app: FastifyInstance) {
 	app.get(
@@ -11,16 +12,16 @@ export async function registerTaskRoutes(app: FastifyInstance) {
 		{ schema: { summary: 'Reserve next tasks', tags: ['tasks'] } },
 		async (req, reply) => {
 			const schema = z.object({
-				broker_id: z.coerce.number().int().positive().optional(),
-				instrument_ids: z
+				broker_system_name: z.string().min(1).optional(),
+				instrument_symbols: z
 					.string()
 					.optional()
 					.transform((v) =>
 						v
 							? v
 									.split(',')
-									.map((x) => Number(x))
-									.filter((n) => Number.isInteger(n) && n > 0)
+									.map((x) => x.trim())
+									.filter(Boolean)
 							: undefined,
 					),
 				limit: z.coerce.number().int().positive().max(100).default(10),
@@ -34,19 +35,72 @@ export async function registerTaskRoutes(app: FastifyInstance) {
 					details: parsed.error.flatten(),
 				});
 			}
-			const { broker_id, instrument_ids, limit, leaseSeconds } = parsed.data as {
-				broker_id?: number;
-				instrument_ids?: number[];
+			const { broker_system_name, instrument_symbols, limit, leaseSeconds } = parsed.data as {
+				broker_system_name?: string;
+				instrument_symbols?: string[];
 				limit: number;
 				leaseSeconds: number;
 			};
+			let brokerId: number | undefined;
+			let instrumentIds: number[] | undefined;
+			if (broker_system_name) {
+				const pool = getPool();
+				const br = await pool.query(
+					'SELECT id FROM registry.brokers WHERE system_name = $1 AND is_active = true',
+					[broker_system_name],
+				);
+				if ((br.rowCount ?? 0) === 0) {
+					return reply
+						.code(400)
+						.send({ code: 'BAD_REQUEST', message: 'Unknown broker_system_name' });
+				}
+				brokerId = br.rows[0].id;
+				if (instrument_symbols && instrument_symbols.length > 0) {
+					const ins = await pool.query(
+						'SELECT id FROM registry.instruments WHERE broker_id = $1 AND symbol = ANY($2::text[]) AND is_active = true',
+						[brokerId, instrument_symbols],
+					);
+					instrumentIds = (ins.rows ?? []).map((r: { id: number }) => r.id);
+				}
+			}
 			const items = await reserveNextTasks({
-				brokerId: broker_id,
-				instrumentIds: instrument_ids,
+				brokerId,
+				instrumentIds,
 				limit,
 				leaseSeconds,
 			});
-			return { items };
+			// Map numeric ids to public identifiers
+			if (!items || items.length === 0) return { items: [] };
+			const pool = getPool();
+			const uniqueBrokerIds = Array.from(new Set(items.map((i) => i.broker_id)));
+			const uniqueInstrumentIds = Array.from(new Set(items.map((i) => i.instrument_id)));
+			const br = await pool.query(
+				'SELECT id, system_name FROM registry.brokers WHERE id = ANY($1::int[])',
+				[uniqueBrokerIds],
+			);
+			const inss = await pool.query(
+				'SELECT id, symbol FROM registry.instruments WHERE id = ANY($1::int[])',
+				[uniqueInstrumentIds],
+			);
+			const brokerMap = new Map<number, string>(
+				(br.rows ?? []).map((r: { id: number; system_name: string }) => [
+					r.id,
+					r.system_name,
+				]),
+			);
+			const instrumentMap = new Map<number, string>(
+				(inss.rows ?? []).map((r: { id: number; symbol: string }) => [r.id, r.symbol]),
+			);
+			const sanitized = items.map((i) => ({
+				id: i.id,
+				broker_system_name: brokerMap.get(i.broker_id),
+				instrument_symbol: instrumentMap.get(i.instrument_id),
+				from_ts: i.from_ts,
+				to_ts: i.to_ts,
+				status: i.status,
+				priority: i.priority,
+			}));
+			return { items: sanitized };
 		},
 	);
 
@@ -66,7 +120,25 @@ export async function registerTaskRoutes(app: FastifyInstance) {
 				return reply
 					.code(409)
 					.send({ code: 'CONFLICT', message: 'Task not reserved or not found' });
-			return { item: updated };
+			// Map ids to public identifiers
+			const pool = getPool();
+			const br = await pool.query('SELECT system_name FROM registry.brokers WHERE id = $1', [
+				updated.broker_id,
+			]);
+			const ins = await pool.query('SELECT symbol FROM registry.instruments WHERE id = $1', [
+				updated.instrument_id,
+			]);
+			return {
+				item: {
+					id: updated.id,
+					broker_system_name: br.rows?.[0]?.system_name,
+					instrument_symbol: ins.rows?.[0]?.symbol,
+					from_ts: updated.from_ts,
+					to_ts: updated.to_ts,
+					status: updated.status,
+					priority: updated.priority,
+				},
+			};
 		},
 	);
 }

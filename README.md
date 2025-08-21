@@ -15,10 +15,28 @@ TypeScript/Node server for historical OHLCV (1m) storage on PostgreSQL/Timescale
 ### API and Docs
 
 - Health: `GET /health`, Ready: `GET /ready`
-- Read API: `GET /v1/ohlcv?broker_id=&instrument_id=&tf=&pageToken=`
+- Read API: `GET /v1/ohlcv?broker_system_name=&instrument_symbol=&tf=&pageToken=`
 - Ingest API: `POST /v1/ingest/ohlcv` (requires bearer token)
-- Task API: `GET /v1/tasks/next`, `POST /v1/tasks/:id/complete`
+  - Body: `{ broker_system_name, instrument_symbol, items: [...] }`
+- Task API: `GET /v1/tasks/next?broker_system_name=&instrument_symbols=s1,s2`, `POST /v1/tasks/:id/complete`
 - Swagger UI: `/docs` (server URL configured via `SWAGGER_SERVER_URL`)
+
+#### OpenAPI/Swagger schema
+
+- JSON schema endpoint: `GET /openapi.json`
+  - Note: there is no `/swagger.json`. Use `/openapi.json` instead.
+- Examples:
+
+```bash
+# View schema in terminal (pretty-printed with jq)
+curl -s http://localhost:8080/openapi.json | jq .
+
+# Save schema to a file
+curl -s http://localhost:8080/openapi.json -o openapi.json
+```
+
+- Swagger UI is available at `http://localhost:8080/docs`.
+- The server URL shown in the docs is controlled by `SWAGGER_SERVER_URL` (defaults to `http://localhost:8080`).
 
 All protected endpoints under `/v1/*` require `Authorization: Bearer <API_TOKEN>` or `X-Api-Key`.
 

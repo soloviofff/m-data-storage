@@ -19,17 +19,27 @@ export const timeseries = pgSchema('timeseries');
 // Registry tables
 export const brokers = registry.table('brokers', {
 	id: serial('id').primaryKey(),
-	code: text('code').notNull().unique(),
+	systemName: text('system_name').notNull().unique(),
 	name: text('name').notNull(),
 	isActive: boolean('is_active').notNull().default(true),
 });
 
-export const instruments = registry.table('instruments', {
-	id: serial('id').primaryKey(),
-	symbol: text('symbol').notNull().unique(),
-	name: text('name'),
-	isActive: boolean('is_active').notNull().default(true),
-});
+export const instruments = registry.table(
+	'instruments',
+	{
+		id: serial('id').primaryKey(),
+		brokerId: integer('broker_id')
+			.notNull()
+			.references(() => brokers.id),
+		symbol: text('symbol').notNull(),
+		name: text('name'),
+		isActive: boolean('is_active').notNull().default(true),
+	},
+	(t) => ({
+		uniqBrokerSymbol: uniqueIndex('instruments_broker_symbol_uniq').on(t.brokerId, t.symbol),
+		idxBroker: index('instruments_broker_id_idx').on(t.brokerId),
+	}),
+);
 
 export const instrumentMappings = registry.table(
 	'instrument_mappings',

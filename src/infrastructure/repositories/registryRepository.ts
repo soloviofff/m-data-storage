@@ -13,13 +13,12 @@ export async function listBrokerInstrumentPairs(
 	let where = 'b.is_active = true AND i.is_active = true';
 	if (typeof brokerId === 'number') {
 		params.push(brokerId);
-		where += ` AND m.broker_id = $${params.length}`;
+		where += ` AND i.broker_id = $${params.length}`;
 	}
 	const sql = `
-		SELECT m.broker_id, m.instrument_id
-		FROM registry.instrument_mappings m
-		JOIN registry.brokers b ON b.id = m.broker_id
-		JOIN registry.instruments i ON i.id = m.instrument_id
+		SELECT i.broker_id, i.id AS instrument_id
+		FROM registry.instruments i
+		JOIN registry.brokers b ON b.id = i.broker_id
 		WHERE ${where}
 	`;
 	const res = await pool.query(sql, params);

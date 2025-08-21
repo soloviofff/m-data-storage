@@ -20,10 +20,9 @@ test('gap scheduler creates tasks for missing minutes', async () => {
   // Ensure is_active columns exist for tests
   await pool.query("ALTER TABLE registry.brokers ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true NOT NULL");
   await pool.query("ALTER TABLE registry.instruments ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true NOT NULL");
-  // Ensure mapping pair exists
-  await pool.query("INSERT INTO registry.brokers (id, code, name) VALUES (1, 'demo', 'Demo') ON CONFLICT DO NOTHING");
-  await pool.query("INSERT INTO registry.instruments (id, symbol, name) VALUES (1, 'BTCUSDT', 'BTC') ON CONFLICT DO NOTHING");
-  await pool.query("INSERT INTO registry.instrument_mappings (broker_id, instrument_id, external_symbol) VALUES (1,1,'BTCUSDT') ON CONFLICT DO NOTHING");
+  // Ensure broker/instrument exist with correct relation
+  await pool.query("INSERT INTO registry.brokers (id, system_name, name) VALUES (1, 'demo', 'Demo') ON CONFLICT DO NOTHING");
+  await pool.query("INSERT INTO registry.instruments (id, broker_id, symbol, name) VALUES (1, 1, 'BTCUSDT', 'BTC') ON CONFLICT DO NOTHING");
 
   // Insert sparse data: 2 minutes present within last 10 minutes
   const base = Math.floor((Date.now() - 10 * 60 * 1000) / 60000) * 60000;

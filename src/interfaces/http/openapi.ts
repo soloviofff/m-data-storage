@@ -20,8 +20,8 @@ export const ReadResponseSchema = z
 	.openapi('ReadResponse');
 
 export const IngestBodySchema = z.object({
-	broker_id: z.number().int().positive(),
-	instrument_id: z.number().int().positive(),
+	broker_system_name: z.string(),
+	instrument_symbol: z.string(),
 	items: z.array(
 		z.object({
 			ts: z.string().openapi({ example: '2025-08-17T08:00:00.000Z' }),
@@ -44,14 +44,13 @@ export const IngestResponseSchema = z
 
 // Registry schemas
 export const BrokerItemSchema = z.object({
-	id: z.number().int().positive(),
-	code: z.string(),
+	system_name: z.string(),
 	name: z.string(),
 	is_active: z.boolean().openapi({ description: 'Whether broker is active for scheduling' }),
 });
 
 export const InstrumentItemSchema = z.object({
-	id: z.number().int().positive(),
+	broker_system_name: z.string().optional(),
 	symbol: z.string(),
 	name: z.string().nullable().optional(),
 	is_active: z.boolean().openapi({ description: 'Whether instrument is active for scheduling' }),
@@ -60,7 +59,7 @@ export const InstrumentItemSchema = z.object({
 export const BrokersUpsertBodySchema = z
 	.array(
 		z.object({
-			code: z.string(),
+			system_name: z.string(),
 			name: z.string(),
 			isActive: z.boolean().optional(),
 		}),
@@ -70,6 +69,7 @@ export const BrokersUpsertBodySchema = z
 export const InstrumentsUpsertBodySchema = z
 	.array(
 		z.object({
+			broker_system_name: z.string(),
 			symbol: z.string(),
 			name: z.string().optional(),
 			isActive: z.boolean().optional(),
@@ -92,14 +92,12 @@ export const RemovedCountResponseSchema = z
 // Task schemas
 export const TaskItemSchema = z.object({
 	id: z.string().uuid(),
-	broker_id: z.number().int().positive(),
-	instrument_id: z.number().int().positive(),
+	broker_system_name: z.string().optional(),
+	instrument_symbol: z.string().optional(),
 	from_ts: z.string(),
 	to_ts: z.string(),
 	status: z.enum(['queued', 'reserved', 'done', 'failed']),
 	priority: z.number().int(),
-	idempotency_key: z.string(),
-	reserved_until: z.string().nullable(),
 });
 
 export const TasksListResponseSchema = z

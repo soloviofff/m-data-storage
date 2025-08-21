@@ -31,10 +31,10 @@ const {
 registry.register('ReadResponse', ReadResponseSchema);
 registry.register('IngestBody', IngestBodySchema);
 registry.register('IngestResponse', IngestResponseSchema ?? z.object({ inserted: z.number(), updated: z.number(), skipped: z.number() }));
-registry.register('BrokersUpsertBody', BrokersUpsertBodySchema ?? z.array(z.object({ code: z.string(), name: z.string(), isActive: z.boolean().optional() })));
-registry.register('InstrumentsUpsertBody', InstrumentsUpsertBodySchema ?? z.array(z.object({ symbol: z.string(), name: z.string().optional(), isActive: z.boolean().optional() })));
-registry.register('BrokersListResponse', BrokersListResponseSchema ?? z.object({ items: z.array(z.object({ id: z.number(), code: z.string(), name: z.string(), is_active: z.boolean() })) }));
-registry.register('InstrumentsListResponse', InstrumentsListResponseSchema ?? z.object({ items: z.array(z.object({ id: z.number(), symbol: z.string(), name: z.string().nullable().optional(), is_active: z.boolean() })) }));
+registry.register('BrokersUpsertBody', BrokersUpsertBodySchema ?? z.array(z.object({ system_name: z.string(), name: z.string(), isActive: z.boolean().optional() })));
+registry.register('InstrumentsUpsertBody', InstrumentsUpsertBodySchema ?? z.array(z.object({ broker_system_name: z.string(), symbol: z.string(), name: z.string().optional(), isActive: z.boolean().optional() })));
+registry.register('BrokersListResponse', BrokersListResponseSchema ?? z.object({ items: z.array(z.object({ system_name: z.string(), name: z.string(), is_active: z.boolean() })) }));
+registry.register('InstrumentsListResponse', InstrumentsListResponseSchema ?? z.object({ items: z.array(z.object({ broker_system_name: z.string().optional(), symbol: z.string(), name: z.string().nullable().optional(), is_active: z.boolean() })) }));
 registry.register('RemovedCountResponse', RemovedCountResponseSchema ?? z.object({ removed: z.number().int().nonnegative() }));
 registry.register('TasksListResponse', TasksListResponseSchema ?? z.object({ items: z.array(z.any()) }));
 registry.register('TaskCompleteBody', TaskCompleteBodySchema ?? z.object({ status: z.enum(['done','failed']) }));
@@ -57,8 +57,8 @@ document.paths['/v1/ohlcv'] = {
   get: {
     summary: 'Read OHLCV bars with optional aggregation',
     parameters: [
-      { name: 'broker_id', in: 'query', required: true, schema: { type: 'integer' } },
-      { name: 'instrument_id', in: 'query', required: true, schema: { type: 'integer' } },
+      { name: 'broker_system_name', in: 'query', required: true, schema: { type: 'string' } },
+      { name: 'instrument_symbol', in: 'query', required: true, schema: { type: 'string' } },
       { name: 'tf', in: 'query', required: false, schema: { type: 'string', enum: ['1m','5m','15m','30m','1h','4h','1d'], default: '1m' } },
       { name: 'pageToken', in: 'query', required: false, schema: { type: 'string' } },
     ],
@@ -88,8 +88,8 @@ document.paths['/v1/tasks/next'] = {
   get: {
     summary: 'Reserve next tasks',
     parameters: [
-      { name: 'broker_id', in: 'query', required: false, schema: { type: 'integer' } },
-      { name: 'instrument_ids', in: 'query', required: false, schema: { type: 'string', description: 'Comma-separated instrument ids' } },
+      { name: 'broker_system_name', in: 'query', required: false, schema: { type: 'string' } },
+      { name: 'instrument_symbols', in: 'query', required: false, schema: { type: 'string', description: 'Comma-separated symbols' } },
       { name: 'limit', in: 'query', required: false, schema: { type: 'integer', default: 10, maximum: 100 } },
       { name: 'leaseSeconds', in: 'query', required: false, schema: { type: 'integer', default: 60, maximum: 3600 } },
     ],
@@ -126,18 +126,18 @@ document.paths['/v1/admin/instruments'] = {
   post: { summary: 'Upsert instruments', requestBody: { required: true, content: { 'application/json': { schema: ref('InstrumentsUpsertBody') } } }, responses: { '200': { description: 'OK', content: { 'application/json': { schema: ref('OkResponse') } } }, '400': { description: 'Bad Request', content: { 'application/json': { schema: ref('ErrorResponse') } } } } },
 };
 
-document.paths['/v1/admin/watch/broker/{broker_id}'] = {
-  delete: { summary: 'Unwatch all instruments for broker', parameters: [{ name: 'broker_id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'OK', content: { 'application/json': { schema: ref('RemovedCountResponse') } } } } },
+document.paths['/v1/admin/watch/broker/{broker_system_name}'] = {
+  delete: { summary: 'Unwatch all instruments for broker', parameters: [{ name: 'broker_system_name', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'OK', content: { 'application/json': { schema: ref('RemovedCountResponse') } } } } },
 };
 
-document.paths['/v1/admin/watch/instrument/{instrument_id}'] = {
-  delete: { summary: 'Unwatch instrument globally', parameters: [{ name: 'instrument_id', in: 'path', required: true, schema: { type: 'integer' } }], responses: { '200': { description: 'OK', content: { 'application/json': { schema: ref('RemovedCountResponse') } } } } },
+document.paths['/v1/admin/watch/instrument/{instrument_symbol}'] = {
+  delete: { summary: 'Unwatch instrument globally', parameters: [{ name: 'instrument_symbol', in: 'path', required: true, schema: { type: 'string' } }], responses: { '200': { description: 'OK', content: { 'application/json': { schema: ref('RemovedCountResponse') } } } } },
 };
 
-document.paths['/v1/admin/watch/{broker_id}/{instrument_id}'] = {
+document.paths['/v1/admin/watch/{broker_system_name}/{instrument_symbol}'] = {
   delete: { summary: 'Unwatch specific broker-instrument pair', parameters: [
-    { name: 'broker_id', in: 'path', required: true, schema: { type: 'integer' } },
-    { name: 'instrument_id', in: 'path', required: true, schema: { type: 'integer' } },
+    { name: 'broker_system_name', in: 'path', required: true, schema: { type: 'string' } },
+    { name: 'instrument_symbol', in: 'path', required: true, schema: { type: 'string' } },
   ], responses: { '200': { description: 'OK', content: { 'application/json': { schema: ref('RemovedCountResponse') } } } } },
 };
 

@@ -1,13 +1,14 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { getPool } from '../../../infrastructure/db/client';
 import {
 	ingestOhlcvBatch,
 	type IngestItem,
 } from '../../../infrastructure/repositories/ohlcvIngestRepository';
 
 const bodySchema = z.object({
-	broker_id: z.coerce.number().int().positive(),
-	instrument_id: z.coerce.number().int().positive(),
+	broker_system_name: z.string().min(1),
+	instrument_symbol: z.string().min(1),
 	items: z
 		.array(
 			z.object({
@@ -35,13 +36,35 @@ export async function registerIngestRoutes(app: FastifyInstance) {
 					details: parsed.error.flatten(),
 				});
 			}
-			const { broker_id, instrument_id, items } = parsed.data as {
-				broker_id: number;
-				instrument_id: number;
+			const { broker_system_name, instrument_symbol, items } = parsed.data as {
+				broker_system_name: string;
+				instrument_symbol: string;
 				items: IngestItem[];
 			};
+			// Resolve internal ids from public identifiers
+			const pool = getPool();
+			const br = await pool.query(
+				'SELECT id FROM registry.brokers WHERE system_name = $1 AND is_active = true',
+				[broker_system_name],
+			);
+			if ((br.rowCount ?? 0) === 0) {
+				return reply
+					.code(400)
+					.send({ code: 'BAD_REQUEST', message: 'Unknown broker_system_name' });
+			}
+			const brokerId: number = br.rows[0].id;
+			const ins = await pool.query(
+				'SELECT id FROM registry.instruments WHERE broker_id = $1 AND symbol = $2 AND is_active = true',
+				[brokerId, instrument_symbol],
+			);
+			if ((ins.rowCount ?? 0) === 0) {
+				return reply
+					.code(400)
+					.send({ code: 'BAD_REQUEST', message: 'Unknown instrument_symbol' });
+			}
+			const instrumentId: number = ins.rows[0].id;
 			try {
-				const res = await ingestOhlcvBatch(broker_id, instrument_id, items);
+				const res = await ingestOhlcvBatch(brokerId, instrumentId, items);
 				return res;
 			} catch (err) {
 				const message = err instanceof Error ? err.message : 'Bad ingest payload';

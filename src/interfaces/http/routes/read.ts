@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { getPool } from '../../../infrastructure/db/client';
 import {
 	aggregateBars,
 	hasMoreData,
@@ -9,8 +10,8 @@ import {
 // Swagger note: response schema omitted to avoid runtime JSON Schema issues
 
 const querySchema = z.object({
-	broker_id: z.coerce.number().int().positive(),
-	instrument_id: z.coerce.number().int().positive(),
+	broker_system_name: z.string().min(1),
+	instrument_symbol: z.string().min(1),
 	tf: z.enum(['1m', '5m', '15m', '30m', '1h', '4h', '1d']).default('1m'),
 	pageToken: z.string().optional(),
 });
@@ -46,12 +47,35 @@ export async function registerReadRoutes(app: FastifyInstance) {
 					details: parsed.error.flatten(),
 				});
 			}
-			const { broker_id, instrument_id, tf, pageToken } = parsed.data as {
-				broker_id: number;
-				instrument_id: number;
+			const { broker_system_name, instrument_symbol, tf, pageToken } = parsed.data as {
+				broker_system_name: string;
+				instrument_symbol: string;
 				tf: Timeframe;
 				pageToken?: string;
 			};
+
+			// Resolve internal ids
+			const pool = getPool();
+			const br = await pool.query(
+				'SELECT id FROM registry.brokers WHERE system_name = $1 AND is_active = true',
+				[broker_system_name],
+			);
+			if ((br.rowCount ?? 0) === 0) {
+				return reply
+					.code(400)
+					.send({ code: 'BAD_REQUEST', message: 'Unknown broker_system_name' });
+			}
+			const brokerId: number = br.rows[0].id;
+			const ins = await pool.query(
+				'SELECT id FROM registry.instruments WHERE broker_id = $1 AND symbol = $2 AND is_active = true',
+				[brokerId, instrument_symbol],
+			);
+			if ((ins.rowCount ?? 0) === 0) {
+				return reply
+					.code(400)
+					.send({ code: 'BAD_REQUEST', message: 'Unknown instrument_symbol' });
+			}
+			const instrumentId: number = ins.rows[0].id;
 
 			const now = new Date();
 			const upperBound = !pageToken ? now : new Date(Date.now());
@@ -59,8 +83,8 @@ export async function registerReadRoutes(app: FastifyInstance) {
 			const pageWindowMs = 24 * 60 * 60 * 1000;
 
 			const rows = await readOneMinuteBars({
-				brokerId: broker_id,
-				instrumentId: instrument_id,
+				brokerId,
+				instrumentId,
 				upperBound,
 				pageWindowMs,
 				strictlyLessThanTs,
@@ -70,8 +94,8 @@ export async function registerReadRoutes(app: FastifyInstance) {
 			if (rows.length > 0) {
 				const lastTs = rows[rows.length - 1].ts;
 				const more = await hasMoreData({
-					brokerId: broker_id,
-					instrumentId: instrument_id,
+					brokerId,
+					instrumentId,
 					upperBound,
 					pageWindowMs,
 					strictlyLessThanTs: lastTs,

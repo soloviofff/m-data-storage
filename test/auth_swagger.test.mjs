@@ -22,7 +22,7 @@ test('health/docs are public, v1 requires token', async () => {
     resp = await fetch(`${baseUrl}/docs`);
     assert.equal([200, 302].includes(resp.status), true);
 
-    resp = await fetch(`${baseUrl}/v1/ohlcv?broker_id=1&instrument_id=1`);
+    resp = await fetch(`${baseUrl}/v1/ohlcv?broker_system_name=demo&instrument_symbol=BTCUSDT`);
     assert.equal(resp.status, 401);
   } finally {
     await app.close();
