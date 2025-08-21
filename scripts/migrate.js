@@ -4,9 +4,14 @@ const path = require('path');
 require('dotenv-expand').expand(require('dotenv').config());
 
 async function run() {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL_INNER });
   const client = await pool.connect();
   try {
+    // Ensure required schemas and extension exist before applying migrations
+    await client.query('CREATE SCHEMA IF NOT EXISTS registry');
+    await client.query('CREATE SCHEMA IF NOT EXISTS timeseries');
+    await client.query('CREATE EXTENSION IF NOT EXISTS timescaledb');
+
     // Create a simple migrations ledger
     await client.query(
       `CREATE TABLE IF NOT EXISTS registry.migrations (

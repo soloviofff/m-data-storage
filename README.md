@@ -38,3 +38,10 @@ All protected endpoints under `/v1/*` require `Authorization: Bearer <API_TOKEN>
 
 - Start TimescaleDB locally: `docker compose -f docker-compose.dev.yml up -d`
 - Init scripts create schemas `registry` and `timeseries`
+
+
+### Drizzle Studio
+
+```bash
+npx drizzle-kit studio
+```
