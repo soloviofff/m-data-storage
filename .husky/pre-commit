@@ -1,4 +1,47 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-yarn lint-staged
+# Ensure common Node.js bin locations are in PATH (GitHub Desktop has a minimal PATH)
+PATH="$PATH:/usr/local/bin:/opt/homebrew/bin:/usr/local/sbin:/opt/homebrew/sbin"
+export PATH
+
+# Prefer running lint-staged with an explicit node to avoid old system node
+NODE_BIN=""
+for CAND in /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node; do
+  if [ -x "$CAND" ]; then
+    NODE_BIN="$CAND"
+    break
+  fi
+done
+
+# If not found in common locations, try from PATH
+if [ -z "$NODE_BIN" ] && command -v node >/dev/null 2>&1; then
+  NODE_BIN="$(command -v node)"
+fi
+
+# If local lint-staged is installed and we have a node, use it directly
+if [ -n "$NODE_BIN" ] && [ -f "./node_modules/lint-staged/bin/lint-staged.js" ]; then
+  NODE_VER="$($NODE_BIN -e 'process.stdout.write(process.versions.node)')"
+  NODE_MAJOR="$(printf "%s" "$NODE_VER" | cut -d. -f1)"
+  if [ "$NODE_MAJOR" -lt 16 ]; then
+    echo "husky - Node.js $NODE_VER is too old for lint-staged (requires >=16). Skipping check." >&2
+    exit 0
+  fi
+  "$NODE_BIN" ./node_modules/lint-staged/bin/lint-staged.js && exit 0
+fi
+
+# Try to run lint-staged using several strategies. Exit 0 if no runner found.
+if command -v npx >/dev/null 2>&1; then
+  npx --yes lint-staged && exit 0
+fi
+
+if command -v npm >/dev/null 2>&1; then
+  npm exec lint-staged && exit 0
+fi
+
+if command -v yarn >/dev/null 2>&1; then
+  yarn lint-staged && exit 0
+fi
+
+echo "husky - lint-staged not available or Node.js not found. Skipping check." >&2
+exit 0

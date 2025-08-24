@@ -9,13 +9,14 @@ services:
     env_file:
       - .env
     environment:
-      - SWAGGER_SERVER_URL=${SWAGGER_SERVER_URL}
-      - DATABASE_URL= ${DATABASE_URL}
+      - PORT=8080
+      - SWAGGER_SERVER_URL=${SWAGGER_SERVER_URL:-http://localhost:11000}
+      - DATABASE_URL=${DATABASE_URL}
       - API_TOKEN=${API_TOKEN}
       - FINALIZATION_WINDOW_HOURS=${FINALIZATION_WINDOW_HOURS}
       - SUPPORTED_TIMEFRAMES=${SUPPORTED_TIMEFRAMES}
     ports:
-      - "${PORT:-11000}:8080"
+      - "${APP_PORT:-11000}:8080"
     depends_on:
       timescaledb:
         condition: service_healthy
